@@ -6,80 +6,91 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='repla
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
+from anthropic import Anthropic
 from supabase import create_client
-
-from llama_index.core import VectorStoreIndex, StorageContext, Settings
-from llama_index.core.memory import ChatMemoryBuffer
-from llama_index.llms.anthropic import Anthropic as LlamaAnthropic
-from llama_index.vector_stores.supabase import SupabaseVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+import os
 
 # ─── CONFIG ──────────────────────────────────────────────
-import os
-SUPABASE_URL = os.environ.get("https://ylmlmoyhrngoxbhojlmt.supabase.co")
-SUPABASE_KEY = os.environ.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlsbWxtb3locm5nb3hiaG9qbG10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1MjMxMzAsImV4cCI6MjA4ODA5OTEzMH0.64RvsKIFKX6Re0NprJThZEKoKh9yZ11YwKXPQ9s7RD0")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY")
-DB_URL = os.environ.get("https://github.com/sergines3-creator/rag-juridique.git")
 
 app = Flask(__name__)
 CORS(app)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+client = Anthropic(api_key=ANTHROPIC_KEY)
 
-# ─── LLAMAINDEX SETUP ─────────────────────────────────────
-print("Initialisation de LlamaIndex...")
-embed_model = HuggingFaceEmbedding(model_name="paraphrase-multilingual-mpnet-base-v2")
-Settings.embed_model = embed_model
-llm = LlamaAnthropic(
-    model="claude-sonnet-4-20250514",
-    api_key=ANTHROPIC_KEY,
-    max_tokens=2000,
-    system_prompt=(
-        "Tu es un assistant juridique expert en droit camerounais et droit OHADA, "
-        "au service du Cabinet de Maitre Boubou. "
-        "Base toi uniquement sur les documents juridiques fournis. "
-        "Cite toujours la source exacte et la page. "
-        "Utilise un langage juridique professionnel. "
-        "Structure ta reponse : 1. Definition et contexte "
-        "2. Base legale applicable 3. Analyse juridique "
-        "4. Points essentiels 5. Recommandation."
-    )
-)
+# Memoire conversationnelle par session
+sessions = {}
 
-vector_store = SupabaseVectorStore(
-    postgres_connection_string=DB_URL,
-    collection_name="chunks"
-)
+MOTS_VIDES = [
+    "quel", "quels", "quelle", "quelles", "dans", "pour", "avec", "sont",
+    "comment", "selon", "quand", "cette", "leurs", "leur", "conditions",
+    "les", "des", "une", "est", "par", "sur", "qui", "que", "quoi",
+    "entre", "plus", "tout", "aussi", "mais", "donc", "alors", "ainsi"
+]
 
-storage_context = StorageContext.from_defaults(vector_store=vector_store)
-index = VectorStoreIndex.from_vector_store(
-    vector_store,
-    storage_context=storage_context
-)
+def extraire_mots_cles(question):
+    mots = question.lower().split()
+    return [m for m in mots if len(m) > 3 and m not in MOTS_VIDES]
 
-print("LlamaIndex initialise !")
+def rechercher_chunks(question, limite=10):
+    tous_chunks = []
+    ids_vus = set()
 
-# Stockage des sessions en memoire
-chat_sessions = {}
+    def ajouter_chunks(data):
+        for chunk in data:
+            cle = str(chunk['document_id']) + "-" + str(chunk['page_numero'])
+            if cle not in ids_vus:
+                ids_vus.add(cle)
+                tous_chunks.append(chunk)
 
-def get_chat_engine(session_id):
-    if session_id not in chat_sessions:
-        memory = ChatMemoryBuffer.from_defaults(token_limit=4000)
-        chat_engine = index.as_chat_engine(
-            chat_mode="condense_plus_context",
-            memory=memory,
-            llm=llm,
-            similarity_top_k=10,
-            verbose=False
-        )
-        chat_sessions[session_id] = chat_engine
-        print("Nouvelle session creee:", session_id)
-    return chat_sessions[session_id]
+    try:
+        result = supabase.table("chunks").select(
+            "contenu, page_numero, document_id"
+        ).ilike("contenu", f"%{question.lower()}%").limit(limite).execute()
+        ajouter_chunks(result.data)
+    except Exception:
+        pass
+
+    if not tous_chunks:
+        try:
+            mots = [m for m in question.lower().split() if len(m) > 4]
+            for mot in mots:
+                result = supabase.table("chunks").select(
+                    "contenu, page_numero, document_id"
+                ).ilike("contenu", f"%{mot}%").limit(5).execute()
+                ajouter_chunks(result.data)
+        except Exception:
+            pass
+
+    if not tous_chunks:
+        try:
+            mots_cles = extraire_mots_cles(question)
+            for mot in mots_cles[:5]:
+                result = supabase.table("chunks").select(
+                    "contenu, page_numero, document_id"
+                ).ilike("contenu", f"%{mot}%").limit(3).execute()
+                ajouter_chunks(result.data)
+        except Exception:
+            pass
+
+    return tous_chunks[:10]
+
+def obtenir_nom_document(document_id):
+    try:
+        result = supabase.table("documents").select("nom").eq("id", document_id).execute()
+        if result.data:
+            return result.data[0]["nom"].replace(".pdf", "").replace("-", " ").replace("_", " ")
+    except Exception:
+        pass
+    return "Document inconnu"
 
 # ─── ROUTES ──────────────────────────────────────────────
 
 @app.route("/")
-def index_page():
+def index():
     return render_template("index.html")
 
 @app.route("/question", methods=["POST"])
@@ -92,26 +103,58 @@ def question():
         if not q:
             return jsonify({"erreur": "Question vide"}), 400
 
-        chat_engine = get_chat_engine(session_id)
-        response = chat_engine.chat(q)
+        if session_id not in sessions:
+            sessions[session_id] = []
 
+        historique_session = sessions[session_id]
+        chunks = rechercher_chunks(q)
+
+        contexte = ""
         sources = []
-        if hasattr(response, "source_nodes") and response.source_nodes:
-            for node in response.source_nodes:
-                if hasattr(node, "metadata"):
-                    doc_id = node.metadata.get("document_id")
-                    page = node.metadata.get("page_numero", "?")
-                    if doc_id:
-                        try:
-                            result = supabase.table("documents").select("nom").eq("id", doc_id).execute()
-                            if result.data:
-                                nom = result.data[0]["nom"].replace(".pdf", "").replace("-", " ").replace("_", " ")
-                                sources.append(f"{nom} - Page {page}")
-                        except Exception:
-                            pass
+        if chunks:
+            for i, chunk in enumerate(chunks, 1):
+                nom_doc = obtenir_nom_document(chunk["document_id"])
+                contexte += f"\n[Passage {i} - Source : {nom_doc}, Page {chunk['page_numero']}]\n{chunk['contenu']}\n"
+                sources.append(f"{nom_doc} - Page {chunk['page_numero']}")
+
+        messages = []
+        for echange in historique_session[-6:]:
+            messages.append({"role": "user", "content": echange["question"]})
+            messages.append({"role": "assistant", "content": echange["reponse"]})
+
+        prompt = (
+            "Tu es un assistant juridique expert en droit camerounais et droit OHADA, "
+            "au service du Cabinet de Maitre Boubou.\n\n"
+            "REGLES :\n"
+            "- Base toi sur les passages juridiques fournis\n"
+            "- Cite toujours la source exacte et la page\n"
+            "- Tiens compte du contexte des questions precedentes\n"
+            "- Utilise un langage juridique professionnel\n\n"
+            "FORMAT :\n"
+            "1. Definition et contexte\n"
+            "2. Base legale applicable\n"
+            "3. Analyse juridique\n"
+            "4. Points essentiels\n"
+            "5. Recommandation\n"
+        )
+
+        if contexte:
+            prompt += f"\nPASSAGES JURIDIQUES :\n{contexte}\n"
+
+        prompt += f"\nQUESTION : {q}"
+        messages.append({"role": "user", "content": prompt})
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=2000,
+            messages=messages
+        )
+
+        reponse_texte = response.content[0].text
+        sessions[session_id].append({"question": q, "reponse": reponse_texte})
 
         return jsonify({
-            "reponse": str(response),
+            "reponse": reponse_texte,
             "sources": list(set(sources))
         })
 
@@ -124,8 +167,8 @@ def nouvelle_conversation():
     try:
         data = request.json
         session_id = data.get("session_id", "default")
-        if session_id in chat_sessions:
-            del chat_sessions[session_id]
+        if session_id in sessions:
+            del sessions[session_id]
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
@@ -152,7 +195,6 @@ def save_historique():
             return jsonify({"erreur": "Question vide"}), 400
 
         date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-
         supabase.table("historique").insert({
             "question": question,
             "reponse": reponse,
