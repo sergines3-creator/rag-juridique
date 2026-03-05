@@ -255,11 +255,13 @@ def analyser():
 
         # Limiter le texte pour ne pas depasser le contexte
         texte_limite = texte[:8000]
+        question = request.form.get("question", "Fais une analyse complète de ce document.")
 
         prompt = (
             "Tu es un assistant juridique expert en droit camerounais et droit OHADA "
             "au service du Cabinet de Maitre Boubou.\n\n"
-            "Analyse ce document juridique et fournis :\n\n"
+            f"Question du client : {question}\n\n"
+            "Analyse ce document juridique en tenant compte de la question posée et fournis :\n\n"
             "## 1. Nature et type du document\n"
             "## 2. Parties impliquees\n"
             "## 3. Clauses et points essentiels\n"
