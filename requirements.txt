@@ -5,3 +5,5 @@ supabase
 gunicorn
 pymupdf
 reportlab
+beautifulsoup4
+requests
