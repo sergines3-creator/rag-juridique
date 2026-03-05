@@ -2,13 +2,4 @@ flask
 flask-cors
 anthropic
 supabase
-pymupdf
-python-dotenv
-llama-index
-llama-index-llms-anthropic
-llama-index-embeddings-huggingface
-llama-index-vector-stores-supabase
-sentence-transformers
-psycopg2-binary
-sqlalchemy
 gunicorn
