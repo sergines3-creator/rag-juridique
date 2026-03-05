@@ -18,488 +18,130 @@
   --border-gold: rgba(198,167,94,0.25);
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body {
-  font-family: 'Inter', sans-serif;
-  background: radial-gradient(circle at top center, #1E293B 0%, #0F172A 60%);
-  color: var(--text-primary);
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* HEADER */
-header {
-  padding: 16px 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(15,23,42,0.9);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border-gold);
-  flex-shrink: 0;
-  z-index: 100;
-}
+body { font-family: 'Inter', sans-serif; background: radial-gradient(circle at top center, #1E293B 0%, #0F172A 60%); color: var(--text-primary); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+header { padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.9); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-gold); flex-shrink: 0; z-index: 100; }
 .logo { display:flex; align-items:center; gap:10px; }
-.logo-icon {
-  width:34px; height:34px;
-  border:1px solid var(--gold);
-  border-radius:6px;
-  display:flex; align-items:center; justify-content:center;
-  color:var(--gold); font-size:16px;
-}
+.logo-icon { width:34px; height:34px; border:1px solid var(--gold); border-radius:6px; display:flex; align-items:center; justify-content:center; color:var(--gold); }
 .logo-text { font-family:'Playfair Display',serif; font-size:18px; }
 .logo-text span { color:var(--gold); }
 .header-right { display:flex; align-items:center; gap:12px; }
-.status {
-  display:flex; align-items:center; gap:6px;
-  font-size:12px; color:var(--text-secondary);
-}
-.status-dot {
-  width:8px; height:8px; border-radius:50%;
-  background:#22c55e;
-  box-shadow: 0 0 6px #22c55e;
-  animation: pulse 2s infinite;
-}
+.status { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-secondary); }
+.status-dot { width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-/* TABS */
-.tabs {
-  display: flex;
-  gap: 4px;
-  background: rgba(198,167,94,0.08);
-  border: 1px solid var(--border-gold);
-  border-radius: 10px;
-  padding: 4px;
-}
-.tab-btn {
-  padding: 6px 14px;
-  border-radius: 7px;
-  border: none;
-  background: transparent;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: 0.2s;
-  white-space: nowrap;
-}
-.tab-btn.active {
-  background: var(--gold);
-  color: var(--bg-dark);
-  font-weight: 600;
-}
+.tabs { display: flex; gap: 4px; background: rgba(198,167,94,0.08); border: 1px solid var(--border-gold); border-radius: 10px; padding: 4px; }
+.tab-btn { padding: 6px 14px; border-radius: 7px; border: none; background: transparent; color: var(--text-secondary); font-size: 12px; font-family: 'Inter', sans-serif; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+.tab-btn.active { background: var(--gold); color: var(--bg-dark); font-weight: 600; }
 .tab-btn:hover:not(.active) { color: var(--gold); }
-
-/* MAIN CONTENT AREA */
-.main-content {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* PANELS */
+.main-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
 .panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
 .panel.active { display: flex; }
-
-/* CHAT */
-.chat-container {
-  flex: 1; overflow-y: auto;
-  padding: 30px 20px;
-  display: flex; flex-direction: column; gap: 20px;
-  max-width: 860px; width: 100%; margin: 0 auto;
-  transition: 0.3s;
-}
+.chat-container { flex: 1; overflow-y: auto; padding: 30px 20px; display: flex; flex-direction: column; gap: 20px; max-width: 860px; width: 100%; margin: 0 auto; }
 .chat-container::-webkit-scrollbar { width:4px; }
 .chat-container::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
-
-/* WELCOME */
 .welcome { text-align:center; padding:40px 20px; animation:fadeUp 0.5s ease; }
 .welcome h1 { font-family:'Playfair Display',serif; font-size:34px; margin-bottom:10px; }
 .welcome h1 span { color:var(--gold); }
 .welcome p { color:var(--text-secondary); font-size:14px; margin-bottom:28px; line-height:1.6; }
 .suggestions { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; }
-.suggestion-btn {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-gold);
-  border-radius: 20px; padding:8px 16px;
-  color: var(--text-secondary); font-size:13px;
-  cursor:pointer; transition:0.3s;
-  font-family:'Inter',sans-serif;
-}
+.suggestion-btn { background: var(--bg-secondary); border: 1px solid var(--border-gold); border-radius: 20px; padding:8px 16px; color: var(--text-secondary); font-size:13px; cursor:pointer; transition:0.3s; font-family:'Inter',sans-serif; }
 .suggestion-btn:hover { border-color:var(--gold); color:var(--gold); }
-
-/* MESSAGES */
-.message {
-  display:flex; gap:12px;
-  animation:fadeUp 0.3s ease;
-  max-width: 85%;
-}
+.message { display:flex; gap:12px; animation:fadeUp 0.3s ease; max-width: 85%; }
 @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 .message.user { align-self:flex-end; flex-direction:row-reverse; }
 .message.ai { align-self:flex-start; }
-.avatar {
-  width:36px; height:36px; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-size:15px; flex-shrink:0;
-}
+.avatar { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0; }
 .avatar.ai { background:var(--bg-secondary); border:1px solid var(--border-gold); color:var(--gold); }
 .avatar.user { background:var(--gold); color:var(--bg-dark); font-size:12px; font-weight:600; }
-.bubble {
-  padding:14px 18px; border-radius:16px;
-  font-size:14px; line-height:1.7; max-width:100%;
-}
-.message.user .bubble {
-  background:var(--gold); color:var(--bg-dark);
-  border-bottom-right-radius:4px; font-weight:500;
-}
-.message.ai .bubble {
-  background:var(--bg-secondary);
-  border:1px solid var(--border-gold);
-  color:var(--text-primary);
-  border-bottom-left-radius:4px;
-}
-/* Markdown dans les bulles AI */
-.message.ai .bubble h1,
-.message.ai .bubble h2,
-.message.ai .bubble h3 {
-  font-family:'Playfair Display',serif;
-  color:var(--gold);
-  margin: 10px 0 6px;
-}
-.message.ai .bubble h1 { font-size:18px; }
-.message.ai .bubble h2 { font-size:16px; }
-.message.ai .bubble h3 { font-size:14px; }
+.bubble { padding:14px 18px; border-radius:16px; font-size:14px; line-height:1.7; max-width:100%; }
+.message.user .bubble { background:var(--gold); color:var(--bg-dark); border-bottom-right-radius:4px; font-weight:500; }
+.message.ai .bubble { background:var(--bg-secondary); border:1px solid var(--border-gold); color:var(--text-primary); border-bottom-left-radius:4px; }
+.message.ai .bubble h1,.message.ai .bubble h2,.message.ai .bubble h3 { font-family:'Playfair Display',serif; color:var(--gold); margin: 10px 0 6px; }
+.message.ai .bubble h1 { font-size:18px; } .message.ai .bubble h2 { font-size:16px; } .message.ai .bubble h3 { font-size:14px; }
 .message.ai .bubble p { margin-bottom:8px; }
-.message.ai .bubble ul, .message.ai .bubble ol {
-  padding-left:20px; margin-bottom:8px;
-}
+.message.ai .bubble ul, .message.ai .bubble ol { padding-left:20px; margin-bottom:8px; }
 .message.ai .bubble li { margin-bottom:4px; }
 .message.ai .bubble strong { color:var(--gold-hover); }
 .message.ai .bubble em { color:var(--text-secondary); font-style:italic; }
-.message.ai .bubble code {
-  background:rgba(198,167,94,0.1);
-  border:1px solid var(--border-gold);
-  padding:1px 6px; border-radius:4px;
-  font-size:12px;
-}
-.message.ai .bubble blockquote {
-  border-left:3px solid var(--gold);
-  padding-left:12px;
-  color:var(--text-secondary);
-  margin:8px 0;
-}
-
-.sources {
-  margin-top:12px; padding-top:12px;
-  border-top:1px solid rgba(255,255,255,0.06);
-  display:flex; flex-wrap:wrap; gap:6px;
-}
-.source-tag {
-  font-size:11px; padding:3px 10px;
-  background:rgba(198,167,94,0.1);
-  border:1px solid var(--border-gold);
-  border-radius:20px; color:var(--gold);
-}
-
-/* TYPING */
-.typing-indicator {
-  display:flex; gap:5px; padding:14px 18px;
-  background:var(--bg-secondary);
-  border:1px solid var(--border-gold);
-  border-radius:16px; border-bottom-left-radius:4px;
-  width:fit-content;
-}
-.typing-dot {
-  width:7px; height:7px; background:var(--gold);
-  border-radius:50%; animation:typing 1.2s infinite;
-}
-.typing-dot:nth-child(2) { animation-delay:0.2s; }
-.typing-dot:nth-child(3) { animation-delay:0.4s; }
+.message.ai .bubble code { background:rgba(198,167,94,0.1); border:1px solid var(--border-gold); padding:1px 6px; border-radius:4px; font-size:12px; }
+.message.ai .bubble blockquote { border-left:3px solid var(--gold); padding-left:12px; color:var(--text-secondary); margin:8px 0; }
+.sources { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.06); display:flex; flex-wrap:wrap; gap:6px; }
+.source-tag { font-size:11px; padding:3px 10px; background:rgba(198,167,94,0.1); border:1px solid var(--border-gold); border-radius:20px; color:var(--gold); }
+.typing-indicator { display:flex; gap:5px; padding:14px 18px; background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:16px; border-bottom-left-radius:4px; width:fit-content; }
+.typing-dot { width:7px; height:7px; background:var(--gold); border-radius:50%; animation:typing 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay:0.2s; } .typing-dot:nth-child(3) { animation-delay:0.4s; }
 @keyframes typing { 0%,60%,100%{transform:translateY(0);opacity:0.4} 30%{transform:translateY(-6px);opacity:1} }
-
-/* INPUT */
-.input-area {
-  flex-shrink:0; padding:16px 20px 20px;
-  background:rgba(15,23,42,0.8);
-  backdrop-filter:blur(10px);
-  border-top:1px solid var(--border-gold);
-}
-.input-wrapper {
-  max-width:860px; margin:0 auto;
-  display:flex; align-items:flex-end; gap:12px;
-  background:var(--bg-secondary);
-  border:1px solid var(--border-gold);
-  border-radius:14px; padding:12px 16px; transition:0.3s;
-}
-.input-wrapper:focus-within {
-  border-color:var(--gold);
-  box-shadow:0 0 15px rgba(198,167,94,0.2);
-}
-textarea {
-  flex:1; background:transparent; border:none; outline:none;
-  color:var(--text-primary); font-size:14px;
-  font-family:'Inter',sans-serif; resize:none;
-  max-height:120px; min-height:24px; line-height:1.5;
-}
+.input-area { flex-shrink:0; padding:16px 20px 20px; background:rgba(15,23,42,0.8); backdrop-filter:blur(10px); border-top:1px solid var(--border-gold); }
+.input-wrapper { max-width:860px; margin:0 auto; display:flex; align-items:flex-end; gap:12px; background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:12px 16px; transition:0.3s; }
+.input-wrapper:focus-within { border-color:var(--gold); box-shadow:0 0 15px rgba(198,167,94,0.2); }
+textarea { flex:1; background:transparent; border:none; outline:none; color:var(--text-primary); font-size:14px; font-family:'Inter',sans-serif; resize:none; max-height:120px; min-height:24px; line-height:1.5; }
 textarea::placeholder { color:rgba(203,213,225,0.4); }
-.send-btn {
-  width:38px; height:38px; border-radius:10px; border:none;
-  background:linear-gradient(135deg,#C6A75E,#D4B873);
-  color:var(--bg-dark); cursor:pointer;
-  display:flex; align-items:center; justify-content:center;
-  font-size:16px; transition:0.3s; flex-shrink:0;
-}
+.send-btn { width:38px; height:38px; border-radius:10px; border:none; background:linear-gradient(135deg,#C6A75E,#D4B873); color:var(--bg-dark); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.3s; flex-shrink:0; }
 .send-btn:hover { transform:scale(1.05); box-shadow:0 4px 15px rgba(198,167,94,0.4); }
 .send-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
-.input-hint {
-  text-align:center; font-size:11px;
-  color:rgba(203,213,225,0.3); margin-top:8px;
-  max-width:860px; margin-left:auto; margin-right:auto;
-}
-
-/* ===================== */
-/* PANEL ANALYSE PDF     */
-/* ===================== */
-.analyse-container {
-  flex: 1; overflow-y: auto;
-  padding: 30px 20px;
-  max-width: 860px; width: 100%; margin: 0 auto;
-}
+.input-hint { text-align:center; font-size:11px; color:rgba(203,213,225,0.3); margin-top:8px; max-width:860px; margin-left:auto; margin-right:auto; }
+.analyse-container { flex: 1; overflow-y: auto; padding: 30px 20px; max-width: 860px; width: 100%; margin: 0 auto; }
 .analyse-container::-webkit-scrollbar { width:4px; }
 .analyse-container::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
-
-.section-title {
-  font-family:'Playfair Display',serif;
-  font-size:24px; margin-bottom:8px;
-}
+.section-title { font-family:'Playfair Display',serif; font-size:24px; margin-bottom:8px; }
 .section-title span { color:var(--gold); }
-.section-desc {
-  color:var(--text-secondary); font-size:13px;
-  margin-bottom:28px; line-height:1.6;
-}
-
-.upload-zone {
-  border: 2px dashed var(--border-gold);
-  border-radius: 16px;
-  padding: 48px 20px;
-  text-align: center;
-  cursor: pointer;
-  transition: 0.3s;
-  background: rgba(198,167,94,0.03);
-  margin-bottom: 20px;
-}
-.upload-zone:hover, .upload-zone.drag-over {
-  border-color: var(--gold);
-  background: rgba(198,167,94,0.08);
-}
+.section-desc { color:var(--text-secondary); font-size:13px; margin-bottom:28px; line-height:1.6; }
+.upload-zone { border: 2px dashed var(--border-gold); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: 0.3s; background: rgba(198,167,94,0.03); margin-bottom: 20px; }
+.upload-zone:hover, .upload-zone.drag-over { border-color: var(--gold); background: rgba(198,167,94,0.08); }
 .upload-icon { font-size:40px; margin-bottom:12px; }
 .upload-text { color:var(--text-secondary); font-size:14px; }
 .upload-text strong { color:var(--gold); }
 .upload-hint { font-size:12px; color:rgba(203,213,225,0.35); margin-top:6px; }
-
-.file-selected {
-  display: none;
-  align-items: center; gap:12px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-gold);
-  border-radius: 12px; padding:14px 16px;
-  margin-bottom: 16px;
-}
-.file-selected.visible { display: flex; }
-.file-icon { font-size:24px; }
-.file-info { flex:1; }
-.file-name { font-size:14px; color:var(--text-primary); font-weight:500; }
-.file-size { font-size:12px; color:rgba(203,213,225,0.4); }
-.file-remove {
-  background:none; border:none;
-  color:rgba(203,213,225,0.4); font-size:18px;
-  cursor:pointer; transition:0.3s;
-}
-.file-remove:hover { color:#f87171; }
-
-.analyse-input-wrapper {
-  display:flex; gap:12px; margin-bottom:16px;
-}
-.analyse-input {
-  flex:1;
-  background:var(--bg-secondary);
-  border:1px solid var(--border-gold);
-  border-radius:12px; padding:12px 16px;
-  color:var(--text-primary); font-size:14px;
-  font-family:'Inter',sans-serif; outline:none;
-  transition:0.3s;
-}
-.analyse-input:focus {
-  border-color:var(--gold);
-  box-shadow:0 0 12px rgba(198,167,94,0.15);
-}
-.analyse-input::placeholder { color:rgba(203,213,225,0.4); }
-
-.gold-btn {
-  display:flex; align-items:center; gap:8px;
-  background:linear-gradient(135deg,#C6A75E,#D4B873);
-  border:none; border-radius:12px;
-  padding:12px 20px;
-  color:var(--bg-dark); font-size:14px; font-weight:600;
-  font-family:'Inter',sans-serif;
-  cursor:pointer; transition:0.3s; white-space:nowrap;
-}
+.gold-btn { display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#C6A75E,#D4B873); border:none; border-radius:12px; padding:12px 20px; color:var(--bg-dark); font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:0.3s; white-space:nowrap; }
 .gold-btn:hover { transform:scale(1.02); box-shadow:0 4px 15px rgba(198,167,94,0.4); }
 .gold-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
-
-.result-box {
-  display:none;
-  background:var(--bg-secondary);
-  border:1px solid var(--border-gold);
-  border-radius:16px; padding:24px;
-  margin-top:20px; animation:fadeUp 0.3s ease;
-}
+.result-box { display:none; background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:16px; padding:24px; margin-top:20px; animation:fadeUp 0.3s ease; }
 .result-box.visible { display:block; }
-.result-box-header {
-  display:flex; justify-content:space-between; align-items:center;
-  margin-bottom:16px; padding-bottom:12px;
-  border-bottom:1px solid rgba(198,167,94,0.15);
-}
+.result-box-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid rgba(198,167,94,0.15); }
 .result-box-title { font-family:'Playfair Display',serif; color:var(--gold); font-size:16px; }
-.result-content {
-  font-size:14px; line-height:1.8; color:var(--text-primary);
-}
-.result-content h1, .result-content h2, .result-content h3 {
-  font-family:'Playfair Display',serif; color:var(--gold);
-  margin: 12px 0 6px;
-}
-.result-content h1 { font-size:18px; }
-.result-content h2 { font-size:16px; }
-.result-content h3 { font-size:14px; }
+.result-content { font-size:14px; line-height:1.8; color:var(--text-primary); }
+.result-content h1,.result-content h2,.result-content h3 { font-family:'Playfair Display',serif; color:var(--gold); margin: 12px 0 6px; }
+.result-content h1 { font-size:18px; } .result-content h2 { font-size:16px; } .result-content h3 { font-size:14px; }
 .result-content p { margin-bottom:10px; }
 .result-content ul, .result-content ol { padding-left:20px; margin-bottom:10px; }
 .result-content li { margin-bottom:4px; }
 .result-content strong { color:var(--gold-hover); }
 .result-content em { color:var(--text-secondary); }
-.result-content blockquote {
-  border-left:3px solid var(--gold);
-  padding-left:12px; color:var(--text-secondary); margin:8px 0;
-}
-
-/* ======================== */
-/* PANEL GÉNÉRATION DOCS    */
-/* ======================== */
-.generation-container {
-  flex: 1; overflow-y: auto;
-  padding: 30px 20px;
-  max-width: 860px; width: 100%; margin: 0 auto;
-}
+.result-content blockquote { border-left:3px solid var(--gold); padding-left:12px; color:var(--text-secondary); margin:8px 0; }
+.generation-container { flex: 1; overflow-y: auto; padding: 30px 20px; max-width: 860px; width: 100%; margin: 0 auto; }
 .generation-container::-webkit-scrollbar { width:4px; }
 .generation-container::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
-
-.doc-types {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px; margin-bottom: 24px;
-}
-.doc-type-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-gold);
-  border-radius: 12px; padding:16px;
-  cursor:pointer; transition:0.3s; text-align:center;
-}
-.doc-type-card:hover, .doc-type-card.selected {
-  border-color:var(--gold);
-  background:rgba(198,167,94,0.1);
-}
-.doc-type-card.selected .doc-type-icon { color:var(--gold); }
+.doc-types { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.doc-type-card { background: var(--bg-secondary); border: 1px solid var(--border-gold); border-radius: 12px; padding:16px; cursor:pointer; transition:0.3s; text-align:center; }
+.doc-type-card:hover, .doc-type-card.selected { border-color:var(--gold); background:rgba(198,167,94,0.1); }
 .doc-type-icon { font-size:24px; margin-bottom:8px; }
 .doc-type-name { font-size:13px; font-weight:500; }
 .doc-type-desc { font-size:11px; color:rgba(203,213,225,0.4); margin-top:4px; }
-
-.gen-form {
-  display:flex; flex-direction:column; gap:14px;
-  margin-bottom:20px;
-}
+.gen-form { display:flex; flex-direction:column; gap:14px; margin-bottom:20px; }
 .form-group { display:flex; flex-direction:column; gap:6px; }
 .form-label { font-size:13px; color:var(--text-secondary); }
-.form-input, .form-textarea {
-  background:var(--bg-secondary);
-  border:1px solid var(--border-gold);
-  border-radius:10px; padding:12px 14px;
-  color:var(--text-primary); font-size:14px;
-  font-family:'Inter',sans-serif; outline:none; transition:0.3s;
-}
-.form-input:focus, .form-textarea:focus {
-  border-color:var(--gold);
-  box-shadow:0 0 12px rgba(198,167,94,0.15);
-}
+.form-input, .form-textarea { background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:10px; padding:12px 14px; color:var(--text-primary); font-size:14px; font-family:'Inter',sans-serif; outline:none; transition:0.3s; }
+.form-input:focus, .form-textarea:focus { border-color:var(--gold); box-shadow:0 0 12px rgba(198,167,94,0.15); }
 .form-input::placeholder, .form-textarea::placeholder { color:rgba(203,213,225,0.4); }
 .form-textarea { resize:vertical; min-height:90px; line-height:1.6; }
-
 @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-/* Icônes dans les cards doc-type */
 .doc-type-card i { stroke: var(--text-secondary); transition:0.3s; }
 .doc-type-card.selected i, .doc-type-card:hover i { stroke: var(--gold); }
-
-/* LOGIN */
-.login-overlay {
-  position: fixed; inset: 0;
-  background: radial-gradient(circle at top center, #1E293B 0%, #0F172A 60%);
-  display: flex; align-items: center; justify-content: center;
-  z-index: 9999;
-}
-.login-box {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-gold);
-  border-radius: 20px;
-  padding: 48px 40px;
-  width: 100%; max-width: 400px;
-  text-align: center;
-  animation: fadeUp 0.4s ease;
-}
-.login-logo {
-  width: 56px; height: 56px;
-  border: 1px solid var(--gold);
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  margin: 0 auto 20px;
-}
-.login-title {
-  font-family: 'Playfair Display', serif;
-  font-size: 22px; margin-bottom: 6px;
-}
+.login-overlay { position: fixed; inset: 0; background: radial-gradient(circle at top center, #1E293B 0%, #0F172A 60%); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.login-box { background: var(--bg-secondary); border: 1px solid var(--border-gold); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 400px; text-align: center; animation: fadeUp 0.4s ease; }
+.login-logo { width: 56px; height: 56px; border: 1px solid var(--gold); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
+.login-title { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 6px; }
 .login-title span { color: var(--gold); }
-.login-subtitle {
-  color: var(--text-secondary); font-size: 13px;
-  margin-bottom: 32px; line-height: 1.5;
-}
+.login-subtitle { color: var(--text-secondary); font-size: 13px; margin-bottom: 32px; line-height: 1.5; }
 .login-input-wrapper { position: relative; margin-bottom: 16px; }
-.login-input {
-  width: 100%;
-  background: var(--bg-dark);
-  border: 1px solid var(--border-gold);
-  border-radius: 10px; padding: 13px 44px 13px 16px;
-  color: var(--text-primary); font-size: 14px;
-  font-family: 'Inter', sans-serif; outline: none; transition: 0.3s;
-}
+.login-input { width: 100%; background: var(--bg-dark); border: 1px solid var(--border-gold); border-radius: 10px; padding: 13px 44px 13px 16px; color: var(--text-primary); font-size: 14px; font-family: 'Inter', sans-serif; outline: none; transition: 0.3s; }
 .login-input:focus { border-color: var(--gold); box-shadow: 0 0 12px rgba(198,167,94,0.15); }
 .login-input::placeholder { color: rgba(203,213,225,0.4); }
-.login-eye {
-  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; cursor: pointer;
-  color: rgba(203,213,225,0.4); transition: 0.2s;
-}
+.login-eye { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: rgba(203,213,225,0.4); transition: 0.2s; }
 .login-eye:hover { color: var(--gold); }
-.login-btn {
-  width: 100%;
-  background: linear-gradient(135deg, #C6A75E, #D4B873);
-  border: none; border-radius: 10px;
-  padding: 13px; color: var(--bg-dark);
-  font-size: 15px; font-weight: 600;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer; transition: 0.3s;
-}
+.login-btn { width: 100%; background: linear-gradient(135deg, #C6A75E, #D4B873); border: none; border-radius: 10px; padding: 13px; color: var(--bg-dark); font-size: 15px; font-weight: 600; font-family: 'Inter', sans-serif; cursor: pointer; transition: 0.3s; }
 .login-btn:hover { box-shadow: 0 4px 20px rgba(198,167,94,0.4); transform: translateY(-1px); }
 .login-error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
 .login-error.visible { display: block; }
-
 @media(max-width:600px) {
   header { padding:14px 16px; }
   .logo-text { font-size:14px; }
@@ -514,18 +156,13 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 </head>
 <body>
 
-<!-- LOGIN OVERLAY -->
 <div class="login-overlay" id="loginOverlay">
   <div class="login-box">
-    <div class="login-logo">
-      <i data-lucide="scale" style="width:26px;height:26px;stroke:var(--gold);"></i>
-    </div>
+    <div class="login-logo"><i data-lucide="scale" style="width:26px;height:26px;stroke:var(--gold);"></i></div>
     <div class="login-title">Cabinet de <span>Maître Boubou</span></div>
     <p class="login-subtitle">Accès réservé aux membres du cabinet.<br>Veuillez entrer le mot de passe.</p>
     <div class="login-input-wrapper">
-      <input type="password" class="login-input" id="loginPassword"
-             placeholder="Mot de passe"
-             onkeydown="if(event.key==='Enter') checkLogin()">
+      <input type="password" class="login-input" id="loginPassword" placeholder="Mot de passe" onkeydown="if(event.key==='Enter') checkLogin()">
       <button class="login-eye" onclick="toggleLoginPwd()" id="loginEyeBtn">
         <i data-lucide="eye" style="width:16px;height:16px;" id="loginEyeIcon"></i>
       </button>
@@ -541,11 +178,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     <div class="logo-text">Cabinet de <span>Maître Boubou</span></div>
   </div>
   <div class="header-right">
-    <div class="status">
-      <div class="status-dot"></div>
-      Assistant actif
-    </div>
-    <!-- TABS -->
+    <div class="status"><div class="status-dot"></div>Assistant actif</div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('chat', this)"><i data-lucide="message-circle" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Chat</button>
       <button class="tab-btn" onclick="switchTab('documents', this)"><i data-lucide="database" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Documents</button>
@@ -554,10 +187,8 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
   </div>
 </header>
 
-<!-- MAIN CONTENT -->
 <div class="main-content">
 
-  <!-- PANEL CHAT -->
   <div class="panel active" id="panel-chat">
     <div class="chat-container" id="chatContainer">
       <div class="welcome" id="welcome">
@@ -580,22 +211,16 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     </div>
   </div>
 
-  <!-- PANEL DOCUMENTS -->
   <div class="panel" id="panel-documents">
     <div class="analyse-container">
       <div class="section-title">Base <span>Documentaire</span></div>
       <p class="section-desc">Uploadez vos PDF juridiques pour les indexer — le chat pourra ensuite répondre à partir de leur contenu.</p>
-
-      <!-- Zone upload -->
-      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
-           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
         <div class="upload-icon"><i data-lucide="upload-cloud" style="width:44px;height:44px;stroke:var(--gold);stroke-width:1.2;"></i></div>
         <div class="upload-text"><strong>Cliquez pour choisir</strong> ou glissez-déposez</div>
         <div class="upload-hint">PDF uniquement · Max 10 Mo · Sera indexé dans la base</div>
       </div>
       <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="uploadDocument(event)">
-
-      <!-- Progress upload -->
       <div id="uploadProgress" style="display:none; margin-bottom:16px;">
         <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
           <i data-lucide="loader" style="width:20px;height:20px;stroke:var(--gold);animation:spin 1s linear infinite;"></i>
@@ -605,16 +230,12 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           </div>
         </div>
       </div>
-
-      <!-- Message succès -->
       <div id="uploadSuccess" style="display:none; margin-bottom:16px;">
         <div style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:10px;">
           <i data-lucide="check-circle" style="width:18px;height:18px;stroke:#22c55e;flex-shrink:0;"></i>
           <div style="font-size:14px;" id="uploadSuccessText">Document indexé avec succès !</div>
         </div>
       </div>
-
-      <!-- Liste des documents -->
       <div style="margin-top:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold);">Documents indexés</div>
@@ -632,13 +253,10 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     </div>
   </div>
 
-  <!-- PANEL GÉNÉRATION -->
   <div class="panel" id="panel-generation">
     <div class="generation-container">
       <div class="section-title">Générer un <span>Document Juridique</span></div>
       <p class="section-desc">Choisissez un type de document, renseignez les informations nécessaires et obtenez un document prêt à l'emploi.</p>
-
-      <!-- Types de documents -->
       <div class="doc-types">
         <div class="doc-type-card selected" onclick="selectDocType(this, 'contrat_travail')">
           <div class="doc-type-icon"><i data-lucide="briefcase" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
@@ -671,17 +289,10 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           <div class="doc-type-desc">Mémoire judiciaire</div>
         </div>
       </div>
-
-      <!-- Formulaire dynamique selon le type -->
-      <div class="gen-form" id="genForm">
-        <!-- Rempli dynamiquement par JS -->
-      </div>
-
+      <div class="gen-form" id="genForm"></div>
       <button class="gold-btn" id="genBtn" onclick="genererDoc()" style="width:100%; justify-content:center;">
         <i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document
       </button>
-
-      <!-- Résultat -->
       <div class="result-box" id="genResult" style="margin-top:20px;">
         <div class="result-box-header">
           <div class="result-box-title"><i data-lucide="file-check" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Document généré</div>
@@ -693,7 +304,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
               <i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer
             </button>
             <button class="gold-btn" onclick="exporterPDF()" id="exportBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1a3a5c,#2563eb);">
-            <i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF
+              <i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF
             </button>
           </div>
         </div>
@@ -708,7 +319,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     </div>
   </div>
 
-</div><!-- fin main-content -->
+</div>
 
 <script>
 const BASE_URL = "https://web-production-bf6e1.up.railway.app";
@@ -723,13 +334,11 @@ const EXPORT_PDF_URL = BASE_URL + "/export_pdf";
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
   renderForm('contrat_travail');
-  // Vérifier si déjà connecté
   if (sessionStorage.getItem("cabinet_auth") === "ok") {
     document.getElementById("loginOverlay").style.display = "none";
   }
 });
 
-// =========== LOGIN ===========
 function checkLogin() {
   const pwd = document.getElementById("loginPassword").value;
   if (pwd === "Cabinet-Boubou@123") {
@@ -741,34 +350,23 @@ function checkLogin() {
   } else {
     document.getElementById("loginError").classList.add("visible");
     document.getElementById("loginPassword").style.borderColor = "#f87171";
-    setTimeout(() => {
-      document.getElementById("loginPassword").style.borderColor = "";
-    }, 1500);
+    setTimeout(() => { document.getElementById("loginPassword").style.borderColor = ""; }, 1500);
   }
 }
 
 function toggleLoginPwd() {
   const input = document.getElementById("loginPassword");
   const icon = document.getElementById("loginEyeIcon");
-  if (input.type === "password") {
-    input.type = "text";
-    icon.setAttribute("data-lucide", "eye-off");
-  } else {
-    input.type = "password";
-    icon.setAttribute("data-lucide", "eye");
-  }
+  if (input.type === "password") { input.type = "text"; icon.setAttribute("data-lucide", "eye-off"); }
+  else { input.type = "password"; icon.setAttribute("data-lucide", "eye"); }
   lucide.createIcons({ nodes: [icon] });
 }
-
 
 const chatContainer = document.getElementById("chatContainer");
 const input = document.getElementById("questionInput");
 const sendBtn = document.getElementById("sendBtn");
-
-let selectedFile = null;
 let selectedDocType = 'contrat_travail';
 
-// =========== TABS ===========
 function switchTab(tab, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -777,7 +375,6 @@ function switchTab(tab, btn) {
   if (tab === 'documents') chargerDocuments();
 }
 
-// =========== CHAT ===========
 input.addEventListener("input", () => {
   input.style.height = "auto";
   input.style.height = Math.min(input.scrollHeight, 120) + "px";
@@ -797,11 +394,7 @@ function addMessage(role, text, sources = []) {
   if (role === "ai") setTimeout(() => lucide.createIcons({ nodes: [avatar] }), 0);
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  if (role === "ai") {
-    bubble.innerHTML = marked.parse(text);
-  } else {
-    bubble.textContent = text;
-  }
+  if (role === "ai") { bubble.innerHTML = marked.parse(text); } else { bubble.textContent = text; }
   if (sources.length > 0) {
     const src = document.createElement("div");
     src.className = "sources";
@@ -838,8 +431,7 @@ async function sendMessage() {
   sendBtn.disabled = true; addTyping();
   try {
     const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: q })
     });
     const data = await res.json();
@@ -853,18 +445,10 @@ async function sendMessage() {
   }
 }
 
-function useSuggestion(btn) {
-  input.value = btn.textContent; input.focus(); sendMessage();
-}
+function useSuggestion(btn) { input.value = btn.textContent; input.focus(); sendMessage(); }
 
-// =========== DOCUMENTS ===========
-function handleDragOver(e) {
-  e.preventDefault();
-  document.getElementById("uploadZone").classList.add("drag-over");
-}
-function handleDragLeave(e) {
-  document.getElementById("uploadZone").classList.remove("drag-over");
-}
+function handleDragOver(e) { e.preventDefault(); document.getElementById("uploadZone").classList.add("drag-over"); }
+function handleDragLeave(e) { document.getElementById("uploadZone").classList.remove("drag-over"); }
 function handleDrop(e) {
   e.preventDefault();
   document.getElementById("uploadZone").classList.remove("drag-over");
@@ -876,29 +460,23 @@ function handleDrop(e) {
 async function uploadDocument(e) {
   const file = e.target.files[0];
   if (!file) return;
-
-  // Afficher progress
   document.getElementById("uploadZone").style.display = "none";
   document.getElementById("uploadProgress").style.display = "block";
   document.getElementById("uploadSuccess").style.display = "none";
   document.getElementById("uploadProgressText").textContent = `Indexation de "${file.name}"...`;
   lucide.createIcons();
-
   const formData = new FormData();
   formData.append("fichier", file);
   formData.append("cabinet", "Cabinet Boubou");
-
   try {
     const res = await fetch(UPLOAD_URL, { method: "POST", body: formData });
     const data = await res.json();
     document.getElementById("uploadProgress").style.display = "none";
-
     if (data.erreur) {
       alert("Erreur : " + data.erreur);
       document.getElementById("uploadZone").style.display = "block";
     } else {
-      document.getElementById("uploadSuccessText").textContent =
-        `"${file.name}" indexé avec succès — ${data.chunks} chunks créés`;
+      document.getElementById("uploadSuccessText").textContent = `"${file.name}" indexé — ${data.chunks} chunks créés`;
       document.getElementById("uploadSuccess").style.display = "block";
       document.getElementById("uploadZone").style.display = "block";
       document.getElementById("fileInput").value = "";
@@ -915,11 +493,7 @@ async function uploadDocument(e) {
 
 async function chargerDocuments() {
   const liste = document.getElementById("listeDocuments");
-  liste.innerHTML = `
-    <div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;">
-      <i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i>
-      <div style="margin-top:6px;">Chargement...</div>
-    </div>`;
+  liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;"><i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i><div style="margin-top:6px;">Chargement...</div></div>`;
   lucide.createIcons();
   try {
     const res = await fetch(LISTE_DOCS_URL);
@@ -933,9 +507,7 @@ async function chargerDocuments() {
            onmouseover="this.style.borderColor='rgba(198,167,94,0.4)'" onmouseout="this.style.borderColor='rgba(198,167,94,0.15)'">
         <i data-lucide="file-text" style="width:20px;height:20px;stroke:var(--gold);flex-shrink:0;"></i>
         <div style="flex:1; min-width:0;">
-          <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-            ${doc.nom.replace(".pdf","").replace(/-|_/g," ")}
-          </div>
+          <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${doc.nom.replace(".pdf","").replace(/-|_/g," ")}</div>
           <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${doc.type}</div>
         </div>
         <button onclick="supprimerDocument('${doc.id}', '${doc.nom.replace(/'/g,"\\'")}')"
@@ -955,71 +527,64 @@ async function supprimerDocument(id, nom) {
   if (!confirm(`Supprimer "${nom}" et tous ses chunks ?`)) return;
   try {
     const res = await fetch(SUPPRIMER_URL, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      method: "DELETE", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id })
     });
     const data = await res.json();
     if (data.succes) chargerDocuments();
     else alert("Erreur : " + data.erreur);
-  } catch(err) {
-    alert("Erreur de connexion.");
-  }
+  } catch(err) { alert("Erreur de connexion."); }
 }
-
-
-// =========== GÉNÉRATION ===========
 
 const docForms = {
   contrat_travail: [
     { id: "employeur", label: "Employeur", placeholder: "Ex : Société ACME SARL" },
-    { id: "employe",   label: "Employé",   placeholder: "Ex : Jean Dupont" },
-    { id: "poste",     label: "Poste",     placeholder: "Ex : Comptable" },
-    { id: "salaire",   label: "Salaire (FCFA)", placeholder: "Ex : 200000" },
+    { id: "employe", label: "Employé", placeholder: "Ex : Jean Dupont" },
+    { id: "poste", label: "Poste", placeholder: "Ex : Comptable" },
+    { id: "salaire", label: "Salaire (FCFA)", placeholder: "Ex : 200000" },
     { id: "type_contrat", label: "Type de contrat", placeholder: "Ex : CDI" },
-    { id: "date_debut",   label: "Date de début",   placeholder: "Ex : 01/04/2026" },
+    { id: "date_debut", label: "Date de début", placeholder: "Ex : 01/04/2026" },
   ],
   mise_en_demeure: [
-    { id: "expediteur",  label: "Expéditeur",  placeholder: "Ex : Jean Dupont" },
-    { id: "destinataire",label: "Destinataire",placeholder: "Ex : Marie Martin" },
-    { id: "objet",       label: "Objet",       placeholder: "Ex : Remboursement dette" },
-    { id: "details",     label: "Faits",       placeholder: "Ex : Prêt de 500 000 FCFA non remboursé depuis le 01/01/2026", textarea: true },
-    { id: "delai",       label: "Délai accordé (jours)", placeholder: "Ex : 15" },
+    { id: "expediteur", label: "Expéditeur", placeholder: "Ex : Jean Dupont" },
+    { id: "destinataire", label: "Destinataire", placeholder: "Ex : Marie Martin" },
+    { id: "objet", label: "Objet", placeholder: "Ex : Remboursement dette" },
+    { id: "details", label: "Faits", placeholder: "Ex : Prêt de 500 000 FCFA non remboursé", textarea: true },
+    { id: "delai", label: "Délai accordé (jours)", placeholder: "Ex : 15" },
   ],
   contrat_bail: [
-    { id: "bailleur",   label: "Bailleur",        placeholder: "Ex : Paul Mbarga" },
-    { id: "locataire",  label: "Locataire",       placeholder: "Ex : Claire Ngo" },
-    { id: "adresse",    label: "Adresse du bien", placeholder: "Ex : Rue de la Joie, Douala" },
-    { id: "loyer",      label: "Loyer mensuel (FCFA)", placeholder: "Ex : 80000" },
-    { id: "duree",      label: "Durée",           placeholder: "Ex : 12 mois" },
-    { id: "type_bail",  label: "Type de bail",    placeholder: "Ex : Usage habitation" },
+    { id: "bailleur", label: "Bailleur", placeholder: "Ex : Paul Mbarga" },
+    { id: "locataire", label: "Locataire", placeholder: "Ex : Claire Ngo" },
+    { id: "adresse", label: "Adresse du bien", placeholder: "Ex : Rue de la Joie, Douala" },
+    { id: "loyer", label: "Loyer mensuel (FCFA)", placeholder: "Ex : 80000" },
+    { id: "duree", label: "Durée", placeholder: "Ex : 12 mois" },
+    { id: "type_bail", label: "Type de bail", placeholder: "Ex : Usage habitation" },
   ],
   statuts_sarl: [
     { id: "nom_societe", label: "Dénomination sociale", placeholder: "Ex : NEXTECH SARL" },
-    { id: "siege",       label: "Siège social",         placeholder: "Ex : Douala, Cameroun" },
-    { id: "capital",     label: "Capital (FCFA)",       placeholder: "Ex : 1000000" },
-    { id: "objet",       label: "Objet social",         placeholder: "Ex : Développement logiciel et conseil IT", textarea: true },
-    { id: "gerant",      label: "Gérant",               placeholder: "Ex : Jean Dupont" },
+    { id: "siege", label: "Siège social", placeholder: "Ex : Douala, Cameroun" },
+    { id: "capital", label: "Capital (FCFA)", placeholder: "Ex : 1000000" },
+    { id: "objet", label: "Objet social", placeholder: "Ex : Développement logiciel", textarea: true },
+    { id: "gerant", label: "Gérant", placeholder: "Ex : Jean Dupont" },
   ],
   fiche_client: [
-    { id: "nom_client",  label: "Nom du client",  placeholder: "Ex : Jean Dupont" },
-    { id: "description", label: "Description du cas", placeholder: "Ex : Litige commercial avec fournisseur", textarea: true },
-    { id: "parties",     label: "Parties impliquées",  placeholder: "Ex : Jean Dupont vs Société XYZ" },
-    { id: "contexte",    label: "Contexte",            placeholder: "Ex : Contrat signé en 2024, inexécution depuis mars 2025", textarea: true },
+    { id: "nom_client", label: "Nom du client", placeholder: "Ex : Jean Dupont" },
+    { id: "description", label: "Description du cas", placeholder: "Ex : Litige commercial", textarea: true },
+    { id: "parties", label: "Parties impliquées", placeholder: "Ex : Jean Dupont vs Société XYZ" },
+    { id: "contexte", label: "Contexte", placeholder: "Ex : Contrat signé en 2024", textarea: true },
   ],
   conclusions: [
-    { id: "tribunal",   label: "Juridiction",   placeholder: "Ex : Tribunal de Grande Instance de Douala" },
-    { id: "demandeur",  label: "Demandeur",     placeholder: "Ex : Jean Dupont" },
-    { id: "defendeur",  label: "Défendeur",     placeholder: "Ex : Société XYZ" },
-    { id: "faits",      label: "Faits",         placeholder: "Ex : ...", textarea: true },
-    { id: "demandes",   label: "Demandes",      placeholder: "Ex : Condamnation à payer 2 000 000 FCFA", textarea: true },
+    { id: "tribunal", label: "Juridiction", placeholder: "Ex : TGI de Douala" },
+    { id: "demandeur", label: "Demandeur", placeholder: "Ex : Jean Dupont" },
+    { id: "defendeur", label: "Défendeur", placeholder: "Ex : Société XYZ" },
+    { id: "faits", label: "Faits", placeholder: "Ex : ...", textarea: true },
+    { id: "demandes", label: "Demandes", placeholder: "Ex : Condamnation à payer 2 000 000 FCFA", textarea: true },
   ],
 };
 
 function renderForm(type) {
   const fields = docForms[type] || [];
-  const form = document.getElementById("genForm");
-  form.innerHTML = fields.map(f => `
+  document.getElementById("genForm").innerHTML = fields.map(f => `
     <div class="form-group">
       <label class="form-label">${f.label}</label>
       ${f.textarea
@@ -1040,37 +605,26 @@ function selectDocType(card, type) {
 async function genererDoc() {
   const fields = docForms[selectedDocType] || [];
   const donnees = {};
-  for (const f of fields) {
-    donnees[f.id] = (document.getElementById("field_" + f.id)?.value || "").trim();
-  }
-
-  // Vérifier qu'au moins le premier champ est rempli
-  const firstVal = Object.values(donnees)[0];
-  if (!firstVal) { alert("Veuillez remplir au moins le premier champ."); return; }
-
+  for (const f of fields) { donnees[f.id] = (document.getElementById("field_" + f.id)?.value || "").trim(); }
+  if (!Object.values(donnees)[0]) { alert("Veuillez remplir au moins le premier champ."); return; }
   const btn = document.getElementById("genBtn");
   btn.disabled = true;
   btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Génération en cours...';
   lucide.createIcons();
-
   try {
     const res = await fetch(GENERER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: selectedDocType, donnees: donnees })
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: selectedDocType, donnees })
     });
     const data = await res.json();
     const resultContent = document.getElementById("genResultContent");
     const resultBox = document.getElementById("genResult");
-    if (data.erreur) {
-      resultContent.innerHTML = `<p style="color:#f87171;">${data.erreur}</p>`;
-    } else {
-      resultContent.innerHTML = marked.parse(data.document || "Aucun document généré.");
-    }
+    if (data.erreur) { resultContent.innerHTML = `<p style="color:#f87171;">${data.erreur}</p>`; }
+    else { resultContent.innerHTML = marked.parse(data.document || "Aucun document généré."); }
     resultBox.classList.add("visible");
     resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch(err) {
-    document.getElementById("genResultContent").innerHTML = '<p style="color:#f87171;">Erreur de connexion au serveur.</p>';
+    document.getElementById("genResultContent").innerHTML = '<p style="color:#f87171;">Erreur de connexion.</p>';
     document.getElementById("genResult").classList.add("visible");
   } finally {
     btn.disabled = false;
@@ -1078,7 +632,6 @@ async function genererDoc() {
     lucide.createIcons();
   }
 }
-
 
 function copierDocument() {
   const content = document.getElementById("genResultContent").innerText;
@@ -1088,74 +641,19 @@ function copierDocument() {
 async function enregistrerDocument() {
   const contenu = document.getElementById("genResultContent").innerText;
   if (!contenu) return;
-
-async function exporterPDF() {
-  const contenu = document.getElementById("genResultContent").innerText;
-  if (!contenu) return;
-
   const typeLabels = {
-    contrat_travail: "Contrat de travail",
-    mise_en_demeure: "Mise en demeure",
-    contrat_bail: "Contrat de bail",
-    statuts_sarl: "Statuts SARL",
-    fiche_client: "Fiche client",
-    conclusions: "Conclusions"
+    contrat_travail: "Contrat de travail", mise_en_demeure: "Mise en demeure",
+    contrat_bail: "Contrat de bail", statuts_sarl: "Statuts SARL",
+    fiche_client: "Fiche client", conclusions: "Conclusions"
   };
-
-  const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
-  const btn = document.getElementById("exportBtn");
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Export...';
-  lucide.createIcons();
-
-  try {
-    const res = await fetch(EXPORT_PDF_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contenu, type_doc: selectedDocType, nom })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      alert("Erreur : " + err.erreur);
-      return;
-    }
-
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf";
-    a.click();
-    URL.revokeObjectURL(url);
-  } catch(err) {
-    alert("Erreur de connexion.");
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF';
-    lucide.createIcons();
-  }
-}  
-
-  const typeLabels = {
-    contrat_travail: "Contrat de travail",
-    mise_en_demeure: "Mise en demeure",
-    contrat_bail: "Contrat de bail",
-    statuts_sarl: "Statuts SARL",
-    fiche_client: "Fiche client",
-    conclusions: "Conclusions"
-  };
-
   const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
   const btn = document.getElementById("saveBtn");
   btn.disabled = true;
   btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Enregistrement...';
   lucide.createIcons();
-
   try {
     const res = await fetch(SAUVEGARDER_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ nom, contenu, type_doc: selectedDocType })
     });
     const data = await res.json();
@@ -1163,18 +661,52 @@ async function exporterPDF() {
       document.getElementById("saveConfirm").style.display = "block";
       lucide.createIcons();
       setTimeout(() => document.getElementById("saveConfirm").style.display = "none", 5000);
-    } else {
-      alert("Erreur : " + data.erreur);
-    }
-  } catch(err) {
-    alert("Erreur de connexion.");
-  } finally {
+    } else { alert("Erreur : " + data.erreur); }
+  } catch(err) { alert("Erreur de connexion."); }
+  finally {
     btn.disabled = false;
     btn.innerHTML = '<i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer';
     lucide.createIcons();
   }
 }
-exporterPDF()
+
+async function exporterPDF() {
+  const contenu = document.getElementById("genResultContent").innerText;
+  if (!contenu) return;
+  const typeLabels = {
+    contrat_travail: "Contrat de travail", mise_en_demeure: "Mise en demeure",
+    contrat_bail: "Contrat de bail", statuts_sarl: "Statuts SARL",
+    fiche_client: "Fiche client", conclusions: "Conclusions"
+  };
+  const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
+  const btn = document.getElementById("exportBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Export...';
+  lucide.createIcons();
+  try {
+    const res = await fetch(EXPORT_PDF_URL, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contenu, type_doc: selectedDocType, nom })
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Erreur : " + err.erreur);
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) { alert("Erreur de connexion."); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF';
+    lucide.createIcons();
+  }
+}
 </script>
 </body>
 </html>
