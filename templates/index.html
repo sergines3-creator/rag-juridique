@@ -692,6 +692,9 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
             <button class="gold-btn" onclick="enregistrerDocument()" id="saveBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1E6B4A,#2D9E6B);">
               <i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer
             </button>
+            <button class="gold-btn" onclick="exporterPDF()" id="exportBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1a3a5c,#2563eb);">
+            <i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF
+            </button>
           </div>
         </div>
         <div id="saveConfirm" style="display:none; margin-bottom:12px;">
@@ -715,6 +718,7 @@ const UPLOAD_URL = BASE_URL + "/upload_document";
 const LISTE_DOCS_URL = BASE_URL + "/liste_documents";
 const SUPPRIMER_URL = BASE_URL + "/supprimer_document";
 const SAUVEGARDER_URL = BASE_URL + "/sauvegarder_document";
+const EXPORT_PDF_URL = BASE_URL + "/export_pdf";
 
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
@@ -1085,6 +1089,54 @@ async function enregistrerDocument() {
   const contenu = document.getElementById("genResultContent").innerText;
   if (!contenu) return;
 
+async function exporterPDF() {
+  const contenu = document.getElementById("genResultContent").innerText;
+  if (!contenu) return;
+
+  const typeLabels = {
+    contrat_travail: "Contrat de travail",
+    mise_en_demeure: "Mise en demeure",
+    contrat_bail: "Contrat de bail",
+    statuts_sarl: "Statuts SARL",
+    fiche_client: "Fiche client",
+    conclusions: "Conclusions"
+  };
+
+  const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
+  const btn = document.getElementById("exportBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Export...';
+  lucide.createIcons();
+
+  try {
+    const res = await fetch(EXPORT_PDF_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contenu, type_doc: selectedDocType, nom })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      alert("Erreur : " + err.erreur);
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf";
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(err) {
+    alert("Erreur de connexion.");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF';
+    lucide.createIcons();
+  }
+}  
+
   const typeLabels = {
     contrat_travail: "Contrat de travail",
     mise_en_demeure: "Mise en demeure",
@@ -1122,6 +1174,7 @@ async function enregistrerDocument() {
     lucide.createIcons();
   }
 }
+exporterPDF()
 </script>
 </body>
 </html>
