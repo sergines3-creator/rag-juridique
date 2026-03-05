@@ -293,6 +293,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <button class="gold-btn" id="genBtn" onclick="genererDoc()" style="width:100%; justify-content:center;">
         <i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document
       </button>
+      <button class="tab-btn" onclick="switchTab('veille', this)"><i data-lucide="radio" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Veille</button>
       <div class="result-box" id="genResult" style="margin-top:20px;">
         <div class="result-box-header">
           <div class="result-box-title"><i data-lucide="file-check" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Document généré</div>
@@ -318,7 +319,34 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       </div>
     </div>
   </div>
+<!-- PANEL VEILLE -->
+<div class="panel" id="panel-veille">
+  <div class="analyse-container">
+    <div class="section-title">Veille <span>Juridique</span></div>
+    <p class="section-desc">Synchronisez automatiquement les nouveaux textes juridiques depuis les sources officielles.</p>
 
+    <!-- Bouton global -->
+    <button class="gold-btn" id="veilleGlobalBtn" onclick="synchroniserTout()" style="width:100%; justify-content:center; margin-bottom:24px;">
+      <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> Synchroniser toutes les sources
+    </button>
+
+    <!-- Liste des sources -->
+    <div id="listeSources">
+      <div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;">
+        <i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i>
+        <div style="margin-top:6px;">Chargement des sources...</div>
+      </div>
+    </div>
+
+    <!-- Journal -->
+    <div id="veilleJournal" style="display:none; margin-top:24px;">
+      <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold); margin-bottom:12px;">
+        Journal de synchronisation
+      </div>
+      <div id="veilleJournalContent"></div>
+    </div>
+  </div>
+</div>
 </div>
 
 <script>
@@ -373,6 +401,7 @@ function switchTab(tab, btn) {
   document.getElementById('panel-' + tab).classList.add('active');
   btn.classList.add('active');
   if (tab === 'documents') chargerDocuments();
+  if (tab === 'veille') chargerSources();
 }
 
 input.addEventListener("input", () => {
@@ -706,6 +735,101 @@ async function exporterPDF() {
     btn.innerHTML = '<i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF';
     lucide.createIcons();
   }
+}
+// =========== VEILLE ===========
+const VEILLE_SOURCES_URL = BASE_URL + "/veille/sources";
+const VEILLE_SYNC_URL = BASE_URL + "/veille/synchroniser";
+
+async function chargerSources() {
+  const liste = document.getElementById("listeSources");
+  try {
+    const res = await fetch(VEILLE_SOURCES_URL);
+    const sources = await res.json();
+    liste.innerHTML = sources.map(s => `
+      <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:16px; margin-bottom:10px; display:flex; align-items:center; gap:14px; transition:0.2s;"
+           onmouseover="this.style.borderColor='rgba(198,167,94,0.35)'" onmouseout="this.style.borderColor='rgba(198,167,94,0.15)'">
+        <div style="width:38px; height:38px; border-radius:8px; background:rgba(198,167,94,0.1); border:1px solid var(--border-gold); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i data-lucide="globe" style="width:18px;height:18px;stroke:var(--gold);"></i>
+        </div>
+        <div style="flex:1;">
+          <div style="font-size:14px; font-weight:500;">${s.nom}</div>
+          <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${s.url}</div>
+        </div>
+        <button class="gold-btn" onclick="synchroniserSource('${s.id}', '${s.nom}', this)"
+          style="padding:6px 14px; font-size:12px;">
+          <i data-lucide="download" style="width:13px;height:13px;"></i> Sync
+        </button>
+      </div>
+    `).join("");
+    lucide.createIcons();
+  } catch(err) {
+    liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`;
+  }
+}
+
+async function synchroniserSource(sourceId, sourceNom, btn) {
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> En cours...';
+  lucide.createIcons();
+  try {
+    const res = await fetch(VEILLE_SYNC_URL, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_id: sourceId })
+    });
+    const data = await res.json();
+    if (data.succes) afficherJournal(data.resultats);
+    else alert("Erreur : " + data.erreur);
+  } catch(err) { alert("Erreur de connexion."); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="download" style="width:13px;height:13px;"></i> Sync';
+    lucide.createIcons();
+  }
+}
+
+async function synchroniserTout() {
+  const btn = document.getElementById("veilleGlobalBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Synchronisation en cours...';
+  lucide.createIcons();
+  try {
+    const res = await fetch(VEILLE_SYNC_URL, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({})
+    });
+    const data = await res.json();
+    if (data.succes) afficherJournal(data.resultats);
+    else alert("Erreur : " + data.erreur);
+  } catch(err) { alert("Erreur de connexion."); }
+  finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> Synchroniser toutes les sources';
+    lucide.createIcons();
+  }
+}
+
+function afficherJournal(resultats) {
+  const journal = document.getElementById("veilleJournal");
+  const content = document.getElementById("veilleJournalContent");
+  journal.style.display = "block";
+  content.innerHTML = resultats.map(r => `
+    <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:16px; margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <div style="font-size:14px; font-weight:500;">${r.source}</div>
+        <div style="display:flex; gap:10px; font-size:12px;">
+          <span style="color:#22c55e;">✓ ${r.nouveaux} nouveaux</span>
+          <span style="color:rgba(203,213,225,0.4);">↩ ${r.doublons} doublons</span>
+          ${r.erreurs > 0 ? `<span style="color:#f87171;">✗ ${r.erreurs} erreurs</span>` : ""}
+        </div>
+      </div>
+      ${r.details.length > 0 ? `
+        <div style="font-size:12px; color:rgba(203,213,225,0.5); border-top:1px solid rgba(198,167,94,0.1); padding-top:8px;">
+          ${r.details.map(d => `<div style="margin-bottom:3px;">${d}</div>`).join("")}
+        </div>
+      ` : ""}
+    </div>
+  `).join("");
+  journal.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 </script>
 </body>

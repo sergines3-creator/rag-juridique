@@ -1,3 +1,8 @@
+import requests
+from bs4 import BeautifulSoup
+import uuid
+import tempfile
+import os
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -587,6 +592,156 @@ def export_pdf():
 
     except Exception as e:
         print("ERREUR EXPORT PDF:", str(e))
+        return jsonify({"erreur": str(e)}), 500
+    # ============ VEILLE JURIDIQUE ============
+SOURCES_VEILLE = [
+    {
+        "id": "ohada",
+        "nom": "OHADA",
+        "url": "https://www.ohada.com/actes-uniformes.html",
+        "domaine": "ohada.com",
+        "actif": True
+    },
+    {
+        "id": "izf",
+        "nom": "CEMAC / IZF",
+        "url": "https://www.izf.net/content/textes-communautaires",
+        "domaine": "izf.net",
+        "actif": True
+    },
+    {
+        "id": "juriafrica",
+        "nom": "Jurisprudence Africaine",
+        "url": "https://www.juriafrica.com/pays/cameroun",
+        "domaine": "juriafrica.com",
+        "actif": True
+    },
+    {
+        "id": "spm",
+        "nom": "Lois Camerounaises",
+        "url": "https://www.spm.gov.cm/site/?q=fr/content/textes-officiels",
+        "domaine": "spm.gov.cm",
+        "actif": True
+    }
+]
+
+@app.route("/veille/sources", methods=["GET"])
+def veille_sources():
+    return jsonify(SOURCES_VEILLE)
+
+@app.route("/veille/synchroniser", methods=["POST"])
+def veille_synchroniser():
+    try:
+        data = request.json
+        source_id = data.get("source_id")  # None = toutes les sources
+
+        sources = SOURCES_VEILLE
+        if source_id:
+            sources = [s for s in SOURCES_VEILLE if s["id"] == source_id]
+
+        resultats = []
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+
+        for source in sources:
+            resultat = {
+                "source": source["nom"],
+                "source_id": source["id"],
+                "nouveaux": 0,
+                "doublons": 0,
+                "erreurs": 0,
+                "details": []
+            }
+
+            try:
+                res = requests.get(source["url"], headers=headers, timeout=15)
+                res.raise_for_status()
+                soup = BeautifulSoup(res.text, "html.parser")
+
+                # Trouver tous les liens PDF
+                liens_pdf = []
+                for a in soup.find_all("a", href=True):
+                    href = a["href"]
+                    texte = a.get_text(strip=True)
+                    if href.endswith(".pdf") or ".pdf" in href.lower():
+                        if not href.startswith("http"):
+                            base = f"https://{source['domaine']}"
+                            href = base + href if href.startswith("/") else base + "/" + href
+                        liens_pdf.append({"url": href, "nom": texte or href.split("/")[-1]})
+
+                # Vérifier doublons et télécharger les nouveaux
+                docs_existants = supabase.table("documents").select("nom").execute()
+                noms_existants = [d["nom"].lower() for d in docs_existants.data]
+
+                for lien in liens_pdf[:10]:  # Max 10 par source
+                    nom_fichier = lien["nom"][:100] + ".pdf" if not lien["nom"].endswith(".pdf") else lien["nom"][:100]
+                    nom_clean = nom_fichier.lower().strip()
+
+                    if nom_clean in noms_existants:
+                        resultat["doublons"] += 1
+                        continue
+
+                    try:
+                        pdf_res = requests.get(lien["url"], headers=headers, timeout=30)
+                        if pdf_res.status_code == 200 and len(pdf_res.content) > 1000:
+                            import fitz
+                            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+                                tmp.write(pdf_res.content)
+                                tmp_path = tmp.name
+
+                            doc_fitz = fitz.open(tmp_path)
+                            pages_texte = []
+                            for i, page in enumerate(doc_fitz):
+                                texte = page.get_text().strip()
+                                if texte:
+                                    pages_texte.append({"page": i + 1, "texte": texte})
+                            doc_fitz.close()
+                            os.unlink(tmp_path)
+
+                            if pages_texte:
+                                doc_id = str(uuid.uuid4())
+                                supabase.table("documents").insert({
+                                    "id": doc_id,
+                                    "nom": nom_fichier,
+                                    "type": source["id"],
+                                    "cabinet": "Veille automatique"
+                                }).execute()
+
+                                chunks_inseres = 0
+                                for page_data in pages_texte:
+                                    texte = page_data["texte"]
+                                    for j in range(0, len(texte), 500):
+                                        chunk_texte = texte[j:j+500].strip()
+                                        if len(chunk_texte) > 50:
+                                            supabase.table("chunks").insert({
+                                                "document_id": doc_id,
+                                                "contenu": chunk_texte,
+                                                "page_numero": page_data["page"]
+                                            }).execute()
+                                            chunks_inseres += 1
+
+                                resultat["nouveaux"] += 1
+                                resultat["details"].append(f"✓ {nom_fichier} ({chunks_inseres} chunks)")
+                        else:
+                            resultat["erreurs"] += 1
+
+                    except Exception as e:
+                        resultat["erreurs"] += 1
+                        print(f"Erreur téléchargement {lien['url']}: {e}")
+
+            except Exception as e:
+                resultat["erreurs"] += 1
+                resultat["details"].append(f"✗ Erreur accès source : {str(e)[:100]}")
+                print(f"Erreur source {source['nom']}: {e}")
+
+            resultats.append(resultat)
+
+        return jsonify({"succes": True, "resultats": resultats})
+
+    except Exception as e:
+        print("ERREUR VEILLE:", str(e))
         return jsonify({"erreur": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
