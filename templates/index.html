@@ -643,35 +643,21 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           <div class="doc-type-name">Statuts SARL</div>
           <div class="doc-type-desc">Droit OHADA</div>
         </div>
-        <div class="doc-type-card" onclick="selectDocType(this, 'procuration')">
-          <div class="doc-type-icon"><i data-lucide="pen-line" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
-          <div class="doc-type-name">Procuration</div>
-          <div class="doc-type-desc">Mandat simple ou spécial</div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'fiche_client')">
+          <div class="doc-type-icon"><i data-lucide="user-check" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Fiche client</div>
+          <div class="doc-type-desc">Analyse et stratégie</div>
         </div>
-        <div class="doc-type-card" onclick="selectDocType(this, 'autre')">
-          <div class="doc-type-icon"><i data-lucide="file-plus" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
-          <div class="doc-type-name">Autre</div>
-          <div class="doc-type-desc">Document personnalisé</div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'conclusions')">
+          <div class="doc-type-icon"><i data-lucide="gavel" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Conclusions</div>
+          <div class="doc-type-desc">Mémoire judiciaire</div>
         </div>
       </div>
 
-      <!-- Formulaire -->
-      <div class="gen-form">
-        <div class="form-group">
-          <label class="form-label">Parties concernées (noms, qualités)</label>
-          <input type="text" class="form-input" id="genParties"
-                 placeholder="Ex : Jean Dupont (employeur) et Marie Martin (employée)">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Détails spécifiques</label>
-          <textarea class="form-textarea" id="genDetails"
-                    placeholder="Ex : Poste : Comptable, Salaire : 200 000 FCFA, Durée : CDI, Lieu : Douala..."></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Instructions particulières (optionnel)</label>
-          <input type="text" class="form-input" id="genInstructions"
-                 placeholder="Ex : Inclure une clause de non-concurrence de 2 ans">
-        </div>
+      <!-- Formulaire dynamique selon le type -->
+      <div class="gen-form" id="genForm">
+        <!-- Rempli dynamiquement par JS -->
       </div>
 
       <button class="gold-btn" id="genBtn" onclick="genererDoc()" style="width:100%; justify-content:center;">
@@ -700,7 +686,10 @@ const HIST_URL = BASE_URL + "/historique";
 const ANALYSER_URL = BASE_URL + "/analyser";
 const GENERER_URL = BASE_URL + "/generer";
 
-document.addEventListener("DOMContentLoaded", () => lucide.createIcons());
+document.addEventListener("DOMContentLoaded", () => {
+  lucide.createIcons();
+  renderForm('contrat_travail'); // formulaire par défaut
+});
 
 const chatContainer = document.getElementById("chatContainer");
 const input = document.getElementById("questionInput");
@@ -902,33 +891,95 @@ async function analyserDoc() {
 }
 
 // =========== GÉNÉRATION ===========
+
+const docForms = {
+  contrat_travail: [
+    { id: "employeur", label: "Employeur", placeholder: "Ex : Société ACME SARL" },
+    { id: "employe",   label: "Employé",   placeholder: "Ex : Jean Dupont" },
+    { id: "poste",     label: "Poste",     placeholder: "Ex : Comptable" },
+    { id: "salaire",   label: "Salaire (FCFA)", placeholder: "Ex : 200000" },
+    { id: "type_contrat", label: "Type de contrat", placeholder: "Ex : CDI" },
+    { id: "date_debut",   label: "Date de début",   placeholder: "Ex : 01/04/2026" },
+  ],
+  mise_en_demeure: [
+    { id: "expediteur",  label: "Expéditeur",  placeholder: "Ex : Jean Dupont" },
+    { id: "destinataire",label: "Destinataire",placeholder: "Ex : Marie Martin" },
+    { id: "objet",       label: "Objet",       placeholder: "Ex : Remboursement dette" },
+    { id: "details",     label: "Faits",       placeholder: "Ex : Prêt de 500 000 FCFA non remboursé depuis le 01/01/2026", textarea: true },
+    { id: "delai",       label: "Délai accordé (jours)", placeholder: "Ex : 15" },
+  ],
+  contrat_bail: [
+    { id: "bailleur",   label: "Bailleur",        placeholder: "Ex : Paul Mbarga" },
+    { id: "locataire",  label: "Locataire",       placeholder: "Ex : Claire Ngo" },
+    { id: "adresse",    label: "Adresse du bien", placeholder: "Ex : Rue de la Joie, Douala" },
+    { id: "loyer",      label: "Loyer mensuel (FCFA)", placeholder: "Ex : 80000" },
+    { id: "duree",      label: "Durée",           placeholder: "Ex : 12 mois" },
+    { id: "type_bail",  label: "Type de bail",    placeholder: "Ex : Usage habitation" },
+  ],
+  statuts_sarl: [
+    { id: "nom_societe", label: "Dénomination sociale", placeholder: "Ex : NEXTECH SARL" },
+    { id: "siege",       label: "Siège social",         placeholder: "Ex : Douala, Cameroun" },
+    { id: "capital",     label: "Capital (FCFA)",       placeholder: "Ex : 1000000" },
+    { id: "objet",       label: "Objet social",         placeholder: "Ex : Développement logiciel et conseil IT", textarea: true },
+    { id: "gerant",      label: "Gérant",               placeholder: "Ex : Jean Dupont" },
+  ],
+  fiche_client: [
+    { id: "nom_client",  label: "Nom du client",  placeholder: "Ex : Jean Dupont" },
+    { id: "description", label: "Description du cas", placeholder: "Ex : Litige commercial avec fournisseur", textarea: true },
+    { id: "parties",     label: "Parties impliquées",  placeholder: "Ex : Jean Dupont vs Société XYZ" },
+    { id: "contexte",    label: "Contexte",            placeholder: "Ex : Contrat signé en 2024, inexécution depuis mars 2025", textarea: true },
+  ],
+  conclusions: [
+    { id: "tribunal",   label: "Juridiction",   placeholder: "Ex : Tribunal de Grande Instance de Douala" },
+    { id: "demandeur",  label: "Demandeur",     placeholder: "Ex : Jean Dupont" },
+    { id: "defendeur",  label: "Défendeur",     placeholder: "Ex : Société XYZ" },
+    { id: "faits",      label: "Faits",         placeholder: "Ex : ...", textarea: true },
+    { id: "demandes",   label: "Demandes",      placeholder: "Ex : Condamnation à payer 2 000 000 FCFA", textarea: true },
+  ],
+};
+
+function renderForm(type) {
+  const fields = docForms[type] || [];
+  const form = document.getElementById("genForm");
+  form.innerHTML = fields.map(f => `
+    <div class="form-group">
+      <label class="form-label">${f.label}</label>
+      ${f.textarea
+        ? `<textarea class="form-textarea" id="field_${f.id}" placeholder="${f.placeholder}"></textarea>`
+        : `<input type="text" class="form-input" id="field_${f.id}" placeholder="${f.placeholder}">`
+      }
+    </div>
+  `).join("");
+}
+
 function selectDocType(card, type) {
   document.querySelectorAll('.doc-type-card').forEach(c => c.classList.remove('selected'));
   card.classList.add('selected');
   selectedDocType = type;
+  renderForm(type);
 }
 
 async function genererDoc() {
-  const parties = document.getElementById("genParties").value.trim();
-  const details = document.getElementById("genDetails").value.trim();
-  const instructions = document.getElementById("genInstructions").value.trim();
+  const fields = docForms[selectedDocType] || [];
+  const donnees = {};
+  for (const f of fields) {
+    donnees[f.id] = (document.getElementById("field_" + f.id)?.value || "").trim();
+  }
 
-  if (!parties) { alert("Veuillez renseigner les parties concernées."); return; }
-  if (!details) { alert("Veuillez renseigner les détails spécifiques."); return; }
+  // Vérifier qu'au moins le premier champ est rempli
+  const firstVal = Object.values(donnees)[0];
+  if (!firstVal) { alert("Veuillez remplir au moins le premier champ."); return; }
 
   const btn = document.getElementById("genBtn");
-  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Génération en cours...'; lucide.createIcons();
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Génération en cours...';
+  lucide.createIcons();
 
   try {
     const res = await fetch(GENERER_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type_document: selectedDocType,
-        parties: parties,
-        details: details,
-        instructions: instructions
-      })
+      body: JSON.stringify({ type: selectedDocType, donnees: donnees })
     });
     const data = await res.json();
     const resultContent = document.getElementById("genResultContent");
@@ -944,9 +995,12 @@ async function genererDoc() {
     document.getElementById("genResultContent").innerHTML = '<p style="color:#f87171;">Erreur de connexion au serveur.</p>';
     document.getElementById("genResult").classList.add("visible");
   } finally {
-    btn.disabled = false; btn.innerHTML = '<i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document'; lucide.createIcons();
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document';
+    lucide.createIcons();
   }
 }
+
 
 function copierDocument() {
   const content = document.getElementById("genResultContent").innerText;
