@@ -497,6 +497,69 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 /* Icônes dans les cards doc-type */
 .doc-type-card i { stroke: var(--text-secondary); transition:0.3s; }
 .doc-type-card.selected i, .doc-type-card:hover i { stroke: var(--gold); }
+
+/* LOGIN */
+.login-overlay {
+  position: fixed; inset: 0;
+  background: radial-gradient(circle at top center, #1E293B 0%, #0F172A 60%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999;
+}
+.login-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-gold);
+  border-radius: 20px;
+  padding: 48px 40px;
+  width: 100%; max-width: 400px;
+  text-align: center;
+  animation: fadeUp 0.4s ease;
+}
+.login-logo {
+  width: 56px; height: 56px;
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.login-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 22px; margin-bottom: 6px;
+}
+.login-title span { color: var(--gold); }
+.login-subtitle {
+  color: var(--text-secondary); font-size: 13px;
+  margin-bottom: 32px; line-height: 1.5;
+}
+.login-input-wrapper { position: relative; margin-bottom: 16px; }
+.login-input {
+  width: 100%;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px; padding: 13px 44px 13px 16px;
+  color: var(--text-primary); font-size: 14px;
+  font-family: 'Inter', sans-serif; outline: none; transition: 0.3s;
+}
+.login-input:focus { border-color: var(--gold); box-shadow: 0 0 12px rgba(198,167,94,0.15); }
+.login-input::placeholder { color: rgba(203,213,225,0.4); }
+.login-eye {
+  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer;
+  color: rgba(203,213,225,0.4); transition: 0.2s;
+}
+.login-eye:hover { color: var(--gold); }
+.login-btn {
+  width: 100%;
+  background: linear-gradient(135deg, #C6A75E, #D4B873);
+  border: none; border-radius: 10px;
+  padding: 13px; color: var(--bg-dark);
+  font-size: 15px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer; transition: 0.3s;
+}
+.login-btn:hover { box-shadow: 0 4px 20px rgba(198,167,94,0.4); transform: translateY(-1px); }
+.login-error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
+.login-error.visible { display: block; }
+
 @media(max-width:600px) {
   header { padding:14px 16px; }
   .logo-text { font-size:14px; }
@@ -512,6 +575,27 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 </head>
 <body>
 
+<!-- LOGIN OVERLAY -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <i data-lucide="scale" style="width:26px;height:26px;stroke:var(--gold);"></i>
+    </div>
+    <div class="login-title">Cabinet de <span>Maître Boubou</span></div>
+    <p class="login-subtitle">Accès réservé aux membres du cabinet.<br>Veuillez entrer le mot de passe.</p>
+    <div class="login-input-wrapper">
+      <input type="password" class="login-input" id="loginPassword"
+             placeholder="Mot de passe"
+             onkeydown="if(event.key==='Enter') checkLogin()">
+      <button class="login-eye" onclick="toggleLoginPwd()" id="loginEyeBtn">
+        <i data-lucide="eye" style="width:16px;height:16px;" id="loginEyeIcon"></i>
+      </button>
+    </div>
+    <button class="login-btn" onclick="checkLogin()">Accéder au cabinet</button>
+    <div class="login-error" id="loginError">Mot de passe incorrect. Veuillez réessayer.</div>
+  </div>
+</div>
+
 <header>
   <div class="logo">
     <div class="logo-icon"><i data-lucide="scale" style="width:18px;height:18px;stroke:var(--gold);"></i></div>
@@ -525,7 +609,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     <!-- TABS -->
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('chat', this)"><i data-lucide="message-circle" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Chat</button>
-      <button class="tab-btn" onclick="switchTab('analyse', this)"><i data-lucide="file-search" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Analyser PDF</button>
+      <button class="tab-btn" onclick="switchTab('documents', this)"><i data-lucide="database" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Documents</button>
       <button class="tab-btn" onclick="switchTab('generation', this)"><i data-lucide="file-pen" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Générer Doc</button>
     </div>
     <button class="hist-btn" onclick="toggleHistorique()"><i data-lucide="clock" style="width:14px;height:14px;vertical-align:middle;margin-right:5px;"></i> Historique</button>
@@ -570,47 +654,54 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     </div>
   </div>
 
-  <!-- PANEL ANALYSE PDF -->
-  <div class="panel" id="panel-analyse">
+  <!-- PANEL DOCUMENTS -->
+  <div class="panel" id="panel-documents">
     <div class="analyse-container">
-      <div class="section-title">Analyser un <span>Document PDF</span></div>
-      <p class="section-desc">Uploadez un contrat, jugement ou acte juridique — l'assistant en extrait les points clés et répond à vos questions.</p>
+      <div class="section-title">Base <span>Documentaire</span></div>
+      <p class="section-desc">Uploadez vos PDF juridiques pour les indexer — le chat pourra ensuite répondre à partir de leur contenu.</p>
 
       <!-- Zone upload -->
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
            ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
         <div class="upload-icon"><i data-lucide="upload-cloud" style="width:44px;height:44px;stroke:var(--gold);stroke-width:1.2;"></i></div>
         <div class="upload-text"><strong>Cliquez pour choisir</strong> ou glissez-déposez</div>
-        <div class="upload-hint">PDF uniquement · Max 10 Mo</div>
+        <div class="upload-hint">PDF uniquement · Max 10 Mo · Sera indexé dans la base</div>
       </div>
-      <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="handleFileSelect(event)">
+      <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="uploadDocument(event)">
 
-      <!-- Fichier sélectionné -->
-      <div class="file-selected" id="fileSelected">
-        <div class="file-icon"><i data-lucide="file-text" style="width:28px;height:28px;stroke:var(--gold);stroke-width:1.4;"></i></div>
-        <div class="file-info">
-          <div class="file-name" id="fileName">document.pdf</div>
-          <div class="file-size" id="fileSize">0 Ko</div>
+      <!-- Progress upload -->
+      <div id="uploadProgress" style="display:none; margin-bottom:16px;">
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
+          <i data-lucide="loader" style="width:20px;height:20px;stroke:var(--gold);animation:spin 1s linear infinite;"></i>
+          <div>
+            <div style="font-size:14px; font-weight:500;" id="uploadProgressText">Indexation en cours...</div>
+            <div style="font-size:12px; color:rgba(203,213,225,0.4); margin-top:2px;">Extraction du texte et découpage en chunks</div>
+          </div>
         </div>
-        <button class="file-remove" onclick="removeFile()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
       </div>
 
-      <!-- Question + bouton -->
-      <div class="analyse-input-wrapper">
-        <input type="text" class="analyse-input" id="analyseQuestion"
-               placeholder="Ex : Quelles sont les clauses problématiques dans ce contrat ?"
-               onkeydown="if(event.key==='Enter') analyserDoc()">
-        <button class="gold-btn" id="analyseBtn" onclick="analyserDoc()">
-          <i data-lucide="search" style="width:15px;height:15px;"></i> Analyser
-        </button>
-      </div>
-
-      <!-- Résultat -->
-      <div class="result-box" id="analyseResult">
-        <div class="result-box-header">
-          <div class="result-box-title"><i data-lucide="clipboard-list" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Analyse du document</div>
+      <!-- Message succès -->
+      <div id="uploadSuccess" style="display:none; margin-bottom:16px;">
+        <div style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:10px;">
+          <i data-lucide="check-circle" style="width:18px;height:18px;stroke:#22c55e;flex-shrink:0;"></i>
+          <div style="font-size:14px;" id="uploadSuccessText">Document indexé avec succès !</div>
         </div>
-        <div class="result-content" id="analyseResultContent"></div>
+      </div>
+
+      <!-- Liste des documents -->
+      <div style="margin-top:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+          <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold);">Documents indexés</div>
+          <button class="gold-btn" onclick="chargerDocuments()" style="padding:6px 14px; font-size:12px;">
+            <i data-lucide="refresh-cw" style="width:13px;height:13px;"></i> Actualiser
+          </button>
+        </div>
+        <div id="listeDocuments">
+          <div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:30px 0;">
+            <i data-lucide="loader" style="width:20px;height:20px;animation:spin 1s linear infinite;stroke:var(--gold);"></i>
+            <div style="margin-top:8px;">Chargement...</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -668,9 +759,20 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <div class="result-box" id="genResult" style="margin-top:20px;">
         <div class="result-box-header">
           <div class="result-box-title"><i data-lucide="file-check" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Document généré</div>
-          <button class="gold-btn" onclick="copierDocument()" style="padding:6px 14px; font-size:12px;">
-            <i data-lucide="copy" style="width:13px;height:13px;"></i> Copier
-          </button>
+          <div style="display:flex; gap:8px;">
+            <button class="gold-btn" onclick="copierDocument()" style="padding:6px 14px; font-size:12px;">
+              <i data-lucide="copy" style="width:13px;height:13px;"></i> Copier
+            </button>
+            <button class="gold-btn" onclick="enregistrerDocument()" id="saveBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1E6B4A,#2D9E6B);">
+              <i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer
+            </button>
+          </div>
+        </div>
+        <div id="saveConfirm" style="display:none; margin-bottom:12px;">
+          <div style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); border-radius:8px; padding:10px 14px; font-size:13px; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="check-circle" style="width:15px;height:15px;stroke:#22c55e;"></i>
+            Document enregistré et indexé dans la base !
+          </div>
         </div>
         <div class="result-content" id="genResultContent"></div>
       </div>
@@ -683,13 +785,52 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 const BASE_URL = "https://web-production-bf6e1.up.railway.app";
 const API_URL = BASE_URL + "/question";
 const HIST_URL = BASE_URL + "/historique";
-const ANALYSER_URL = BASE_URL + "/analyser";
 const GENERER_URL = BASE_URL + "/generer";
+const UPLOAD_URL = BASE_URL + "/upload_document";
+const LISTE_DOCS_URL = BASE_URL + "/liste_documents";
+const SUPPRIMER_URL = BASE_URL + "/supprimer_document";
+const SAUVEGARDER_URL = BASE_URL + "/sauvegarder_document";
 
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
-  renderForm('contrat_travail'); // formulaire par défaut
+  renderForm('contrat_travail');
+  // Vérifier si déjà connecté
+  if (sessionStorage.getItem("cabinet_auth") === "ok") {
+    document.getElementById("loginOverlay").style.display = "none";
+  }
 });
+
+// =========== LOGIN ===========
+function checkLogin() {
+  const pwd = document.getElementById("loginPassword").value;
+  if (pwd === "Cabinet-Boubou@123") {
+    sessionStorage.setItem("cabinet_auth", "ok");
+    const overlay = document.getElementById("loginOverlay");
+    overlay.style.opacity = "0";
+    overlay.style.transition = "opacity 0.4s ease";
+    setTimeout(() => overlay.style.display = "none", 400);
+  } else {
+    document.getElementById("loginError").classList.add("visible");
+    document.getElementById("loginPassword").style.borderColor = "#f87171";
+    setTimeout(() => {
+      document.getElementById("loginPassword").style.borderColor = "";
+    }, 1500);
+  }
+}
+
+function toggleLoginPwd() {
+  const input = document.getElementById("loginPassword");
+  const icon = document.getElementById("loginEyeIcon");
+  if (input.type === "password") {
+    input.type = "text";
+    icon.setAttribute("data-lucide", "eye-off");
+  } else {
+    input.type = "password";
+    icon.setAttribute("data-lucide", "eye");
+  }
+  lucide.createIcons({ nodes: [icon] });
+}
+
 
 const chatContainer = document.getElementById("chatContainer");
 const input = document.getElementById("questionInput");
@@ -704,6 +845,7 @@ function switchTab(tab, btn) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('panel-' + tab).classList.add('active');
   btn.classList.add('active');
+  if (tab === 'documents') chargerDocuments();
 }
 
 // =========== CHAT ===========
@@ -823,7 +965,7 @@ async function clearHistorique() {
 }
 function reuseQuestion(q) { input.value = q; toggleHistorique(); input.focus(); }
 
-// =========== ANALYSE PDF ===========
+// =========== DOCUMENTS ===========
 function handleDragOver(e) {
   e.preventDefault();
   document.getElementById("uploadZone").classList.add("drag-over");
@@ -835,60 +977,104 @@ function handleDrop(e) {
   e.preventDefault();
   document.getElementById("uploadZone").classList.remove("drag-over");
   const file = e.dataTransfer.files[0];
-  if (file && file.type === "application/pdf") setFile(file);
+  if (file && file.type === "application/pdf") uploadDocument({ target: { files: [file] } });
   else alert("Veuillez déposer un fichier PDF.");
 }
-function handleFileSelect(e) {
+
+async function uploadDocument(e) {
   const file = e.target.files[0];
-  if (file) setFile(file);
-}
-function setFile(file) {
-  selectedFile = file;
-  document.getElementById("fileName").textContent = file.name;
-  document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " Ko";
-  document.getElementById("fileSelected").classList.add("visible");
+  if (!file) return;
+
+  // Afficher progress
   document.getElementById("uploadZone").style.display = "none";
-}
-function removeFile() {
-  selectedFile = null;
-  document.getElementById("fileSelected").classList.remove("visible");
-  document.getElementById("uploadZone").style.display = "block";
-  document.getElementById("fileInput").value = "";
-  document.getElementById("analyseResult").classList.remove("visible");
-}
-
-async function analyserDoc() {
-  const question = document.getElementById("analyseQuestion").value.trim();
-  if (!selectedFile) { alert("Veuillez d'abord uploader un fichier PDF."); return; }
-  if (!question) { alert("Veuillez poser une question sur le document."); return; }
-
-  const btn = document.getElementById("analyseBtn");
-  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Analyse en cours...';
+  document.getElementById("uploadProgress").style.display = "block";
+  document.getElementById("uploadSuccess").style.display = "none";
+  document.getElementById("uploadProgressText").textContent = `Indexation de "${file.name}"...`;
   lucide.createIcons();
 
   const formData = new FormData();
-  formData.append("fichier", selectedFile);
-  formData.append("question", question);
+  formData.append("fichier", file);
+  formData.append("cabinet", "Cabinet Boubou");
 
   try {
-    const res = await fetch(ANALYSER_URL, { method: "POST", body: formData });
+    const res = await fetch(UPLOAD_URL, { method: "POST", body: formData });
     const data = await res.json();
-    const resultContent = document.getElementById("analyseResultContent");
-    const resultBox = document.getElementById("analyseResult");
+    document.getElementById("uploadProgress").style.display = "none";
+
     if (data.erreur) {
-      resultContent.innerHTML = `<p style="color:#f87171;">${data.erreur}</p>`;
+      alert("Erreur : " + data.erreur);
+      document.getElementById("uploadZone").style.display = "block";
     } else {
-      resultContent.innerHTML = marked.parse(data.reponse || "Aucune réponse reçue.");
+      document.getElementById("uploadSuccessText").textContent =
+        `"${file.name}" indexé avec succès — ${data.chunks} chunks créés`;
+      document.getElementById("uploadSuccess").style.display = "block";
+      document.getElementById("uploadZone").style.display = "block";
+      document.getElementById("fileInput").value = "";
+      lucide.createIcons();
+      chargerDocuments();
+      setTimeout(() => document.getElementById("uploadSuccess").style.display = "none", 5000);
     }
-    resultBox.classList.add("visible");
-    resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch(err) {
-    document.getElementById("analyseResultContent").innerHTML = '<p style="color:#f87171;">Erreur de connexion au serveur.</p>';
-    document.getElementById("analyseResult").classList.add("visible");
-  } finally {
-    btn.disabled = false; btn.innerHTML = '<i data-lucide="search" style="width:15px;height:15px;"></i> Analyser'; lucide.createIcons();
+    document.getElementById("uploadProgress").style.display = "none";
+    document.getElementById("uploadZone").style.display = "block";
+    alert("Erreur de connexion au serveur.");
   }
 }
+
+async function chargerDocuments() {
+  const liste = document.getElementById("listeDocuments");
+  liste.innerHTML = `
+    <div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;">
+      <i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i>
+      <div style="margin-top:6px;">Chargement...</div>
+    </div>`;
+  lucide.createIcons();
+  try {
+    const res = await fetch(LISTE_DOCS_URL);
+    const docs = await res.json();
+    if (!docs.length) {
+      liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:30px 0;">Aucun document indexé</div>`;
+      return;
+    }
+    liste.innerHTML = docs.map(doc => `
+      <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; transition:0.2s;"
+           onmouseover="this.style.borderColor='rgba(198,167,94,0.4)'" onmouseout="this.style.borderColor='rgba(198,167,94,0.15)'">
+        <i data-lucide="file-text" style="width:20px;height:20px;stroke:var(--gold);flex-shrink:0;"></i>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${doc.nom.replace(".pdf","").replace(/-|_/g," ")}
+          </div>
+          <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${doc.type}</div>
+        </div>
+        <button onclick="supprimerDocument('${doc.id}', '${doc.nom.replace(/'/g,"\\'")}')"
+          style="background:none; border:none; cursor:pointer; color:rgba(203,213,225,0.3); transition:0.2s; flex-shrink:0;"
+          onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(203,213,225,0.3)'">
+          <i data-lucide="trash-2" style="width:15px;height:15px;"></i>
+        </button>
+      </div>
+    `).join("");
+    lucide.createIcons();
+  } catch(err) {
+    liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`;
+  }
+}
+
+async function supprimerDocument(id, nom) {
+  if (!confirm(`Supprimer "${nom}" et tous ses chunks ?`)) return;
+  try {
+    const res = await fetch(SUPPRIMER_URL, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id })
+    });
+    const data = await res.json();
+    if (data.succes) chargerDocuments();
+    else alert("Erreur : " + data.erreur);
+  } catch(err) {
+    alert("Erreur de connexion.");
+  }
+}
+
 
 // =========== GÉNÉRATION ===========
 
@@ -1005,6 +1191,48 @@ async function genererDoc() {
 function copierDocument() {
   const content = document.getElementById("genResultContent").innerText;
   navigator.clipboard.writeText(content).then(() => alert("Document copié dans le presse-papier !"));
+}
+
+async function enregistrerDocument() {
+  const contenu = document.getElementById("genResultContent").innerText;
+  if (!contenu) return;
+
+  const typeLabels = {
+    contrat_travail: "Contrat de travail",
+    mise_en_demeure: "Mise en demeure",
+    contrat_bail: "Contrat de bail",
+    statuts_sarl: "Statuts SARL",
+    fiche_client: "Fiche client",
+    conclusions: "Conclusions"
+  };
+
+  const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
+  const btn = document.getElementById("saveBtn");
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Enregistrement...';
+  lucide.createIcons();
+
+  try {
+    const res = await fetch(SAUVEGARDER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom, contenu, type_doc: selectedDocType })
+    });
+    const data = await res.json();
+    if (data.succes) {
+      document.getElementById("saveConfirm").style.display = "block";
+      lucide.createIcons();
+      setTimeout(() => document.getElementById("saveConfirm").style.display = "none", 5000);
+    } else {
+      alert("Erreur : " + data.erreur);
+    }
+  } catch(err) {
+    alert("Erreur de connexion.");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer';
+    lucide.createIcons();
+  }
 }
 </script>
 </body>

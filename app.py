@@ -354,5 +354,137 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
     except Exception as e:
         print("ERREUR GENERER:", str(e))
         return jsonify({"erreur": str(e)}), 500
+    # ============ UPLOAD DOCUMENT ============
+@app.route("/upload_document", methods=["POST"])
+def upload_document():
+    try:
+        if "fichier" not in request.files:
+            return jsonify({"erreur": "Aucun fichier recu"}), 400
+
+        fichier = request.files["fichier"]
+        cabinet = request.form.get("cabinet", "Cabinet Boubou")
+
+        if not fichier.filename.endswith(".pdf"):
+            return jsonify({"erreur": "Format PDF uniquement"}), 400
+
+        import fitz, tempfile, os, uuid
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            fichier.save(tmp.name)
+            tmp_path = tmp.name
+
+        doc = fitz.open(tmp_path)
+        pages_texte = []
+        for i, page in enumerate(doc):
+            texte = page.get_text().strip()
+            if texte:
+                pages_texte.append({"page": i + 1, "texte": texte})
+        doc.close()
+        os.unlink(tmp_path)
+
+        if not pages_texte:
+            return jsonify({"erreur": "Impossible d'extraire le texte du PDF"}), 400
+
+        # Sauvegarder le document
+        doc_id = str(uuid.uuid4())
+        supabase.table("documents").insert({
+            "id": doc_id,
+            "nom": fichier.filename,
+            "type": "juridique",
+            "cabinet": cabinet
+        }).execute()
+
+        # Découper et sauvegarder les chunks
+        chunks_inseres = 0
+        for page_data in pages_texte:
+            texte = page_data["texte"]
+            # Découper en chunks de ~500 caractères
+            taille_chunk = 500
+            for j in range(0, len(texte), taille_chunk):
+                chunk_texte = texte[j:j + taille_chunk].strip()
+                if len(chunk_texte) > 50:
+                    supabase.table("chunks").insert({
+                        "document_id": doc_id,
+                        "contenu": chunk_texte,
+                        "page_numero": page_data["page"]
+                    }).execute()
+                    chunks_inseres += 1
+
+        return jsonify({
+            "succes": True,
+            "message": f"Document '{fichier.filename}' indexé avec succès",
+            "chunks": chunks_inseres,
+            "document_id": doc_id
+        })
+
+    except Exception as e:
+        print("ERREUR UPLOAD:", str(e))
+        return jsonify({"erreur": str(e)}), 500
+
+
+# ============ LISTE DOCUMENTS ============
+@app.route("/liste_documents", methods=["GET"])
+def liste_documents():
+    try:
+        result = supabase.table("documents").select("id, nom, type, cabinet").order("nom").execute()
+        return jsonify(result.data)
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+
+# ============ SUPPRIMER DOCUMENT ============
+@app.route("/supprimer_document", methods=["DELETE"])
+def supprimer_document():
+    try:
+        data = request.json
+        doc_id = data.get("id")
+        if not doc_id:
+            return jsonify({"erreur": "ID manquant"}), 400
+        # Supprimer les chunks d'abord
+        supabase.table("chunks").delete().eq("document_id", doc_id).execute()
+        # Supprimer le document
+        supabase.table("documents").delete().eq("id", doc_id).execute()
+        return jsonify({"succes": True, "message": "Document supprimé"})
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+
+# ============ SAUVEGARDER DOCUMENT GÉNÉRÉ ============
+@app.route("/sauvegarder_document", methods=["POST"])
+def sauvegarder_document():
+    try:
+        data = request.json
+        nom = data.get("nom", "Document sans titre")
+        contenu = data.get("contenu", "")
+        type_doc = data.get("type_doc", "genere")
+
+        if not contenu:
+            return jsonify({"erreur": "Contenu vide"}), 400
+
+        import uuid
+        doc_id = str(uuid.uuid4())
+        supabase.table("documents").insert({
+            "id": doc_id,
+            "nom": nom,
+            "type": type_doc,
+            "cabinet": "Cabinet Boubou"
+        }).execute()
+
+        # Indexer le contenu en chunks pour qu'il soit cherchable dans le chat
+        taille_chunk = 500
+        for j in range(0, len(contenu), taille_chunk):
+            chunk_texte = contenu[j:j + taille_chunk].strip()
+            if len(chunk_texte) > 50:
+                supabase.table("chunks").insert({
+                    "document_id": doc_id,
+                    "contenu": chunk_texte,
+                    "page_numero": 1
+                }).execute()
+
+        return jsonify({"succes": True, "message": f"Document '{nom}' sauvegardé", "document_id": doc_id})
+
+    except Exception as e:
+        print("ERREUR SAUVEGARDE:", str(e))
+        return jsonify({"erreur": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
