@@ -443,6 +443,7 @@ def sauvegarder_document():
     except Exception as e:
         print("ERREUR SAUVEGARDE:", str(e))
         return jsonify({"erreur": str(e)}), 500
+    
     # ============ EXPORT PDF ============
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
