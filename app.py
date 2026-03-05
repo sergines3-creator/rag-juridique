@@ -173,49 +173,6 @@ def nouvelle_conversation():
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
 
-@app.route("/historique", methods=["GET"])
-def get_historique():
-    try:
-        result = supabase.table("historique").select(
-            "id, question, reponse, date"
-        ).order("date", desc=True).limit(50).execute()
-        return jsonify(result.data)
-    except Exception as e:
-        print("ERREUR GET HISTORIQUE:", str(e))
-        return jsonify([])
-
-@app.route("/historique", methods=["POST"])
-def save_historique():
-    try:
-        data = request.json
-        question = data.get("question", "").strip()
-        reponse = data.get("reponse", "").strip()
-
-        if not question:
-            return jsonify({"erreur": "Question vide"}), 400
-
-        date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
-        supabase.table("historique").insert({
-            "question": question,
-            "reponse": reponse,
-            "date": date_str
-        }).execute()
-
-        return jsonify({"ok": True})
-
-    except Exception as e:
-        print("ERREUR SAVE HISTORIQUE:", str(e))
-        return jsonify({"erreur": str(e)}), 500
-
-@app.route("/historique", methods=["DELETE"])
-def clear_historique():
-    try:
-        supabase.table("historique").delete().neq("id", 0).execute()
-        return jsonify({"ok": True})
-    except Exception as e:
-        print("ERREUR DELETE HISTORIQUE:", str(e))
-        return jsonify({"erreur": str(e)}), 500
-
 @app.route("/documents")
 def documents():
     try:
