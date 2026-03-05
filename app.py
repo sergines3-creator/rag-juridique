@@ -443,5 +443,149 @@ def sauvegarder_document():
     except Exception as e:
         print("ERREUR SAUVEGARDE:", str(e))
         return jsonify({"erreur": str(e)}), 500
+    # ============ EXPORT PDF ============
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
+import io, re
+
+@app.route("/export_pdf", methods=["POST"])
+def export_pdf():
+    try:
+        data = request.json
+        contenu = data.get("contenu", "")
+        type_doc = data.get("type_doc", "document")
+        nom = data.get("nom", "Document juridique")
+
+        if not contenu:
+            return jsonify({"erreur": "Contenu vide"}), 400
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2.5*cm,
+            leftMargin=2.5*cm,
+            topMargin=2.5*cm,
+            bottomMargin=2.5*cm
+        )
+
+        # Couleurs cabinet
+        GOLD = colors.HexColor("#C6A75E")
+        DARK = colors.HexColor("#0F172A")
+        GRAY = colors.HexColor("#64748B")
+
+        styles = getSampleStyleSheet()
+
+        # Style en-tête cabinet
+        style_cabinet = ParagraphStyle(
+            "cabinet",
+            fontName="Helvetica-Bold",
+            fontSize=16,
+            textColor=GOLD,
+            alignment=TA_CENTER,
+            spaceAfter=4
+        )
+        style_sous_titre = ParagraphStyle(
+            "sous_titre",
+            fontName="Helvetica",
+            fontSize=9,
+            textColor=GRAY,
+            alignment=TA_CENTER,
+            spaceAfter=2
+        )
+        style_titre_doc = ParagraphStyle(
+            "titre_doc",
+            fontName="Helvetica-Bold",
+            fontSize=13,
+            textColor=DARK,
+            alignment=TA_CENTER,
+            spaceBefore=16,
+            spaceAfter=8
+        )
+        style_corps = ParagraphStyle(
+            "corps",
+            fontName="Helvetica",
+            fontSize=10,
+            textColor=DARK,
+            leading=16,
+            alignment=TA_JUSTIFY,
+            spaceAfter=8
+        )
+        style_h1 = ParagraphStyle(
+            "h1", fontName="Helvetica-Bold",
+            fontSize=12, textColor=GOLD,
+            spaceBefore=12, spaceAfter=6
+        )
+        style_h2 = ParagraphStyle(
+            "h2", fontName="Helvetica-Bold",
+            fontSize=11, textColor=DARK,
+            spaceBefore=10, spaceAfter=4
+        )
+        style_date = ParagraphStyle(
+            "date", fontName="Helvetica-Oblique",
+            fontSize=9, textColor=GRAY,
+            alignment=TA_CENTER, spaceAfter=4
+        )
+
+        elements = []
+
+        # En-tête cabinet
+        elements.append(Paragraph("Cabinet de Maître Boubou", style_cabinet))
+        elements.append(Paragraph("Avocat au Barreau du Cameroun · Douala", style_sous_titre))
+        elements.append(Paragraph(f"Document généré le {__import__('datetime').datetime.now().strftime('%d/%m/%Y à %H:%M')}", style_date))
+        elements.append(HRFlowable(width="100%", thickness=1, color=GOLD, spaceAfter=12))
+
+        # Titre du document
+        elements.append(Paragraph(nom.upper(), style_titre_doc))
+        elements.append(HRFlowable(width="60%", thickness=0.5, color=GOLD, spaceAfter=16))
+
+        # Contenu — traitement ligne par ligne
+        lignes = contenu.split("\n")
+        for ligne in lignes:
+            ligne = ligne.strip()
+            if not ligne:
+                elements.append(Spacer(1, 6))
+                continue
+
+            # Nettoyer markdown
+            if ligne.startswith("### "):
+                elements.append(Paragraph(ligne[4:], style_h2))
+            elif ligne.startswith("## "):
+                elements.append(Paragraph(ligne[3:], style_h1))
+            elif ligne.startswith("# "):
+                elements.append(Paragraph(ligne[2:], style_h1))
+            else:
+                # Nettoyer ** et *
+                ligne = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', ligne)
+                ligne = re.sub(r'\*(.+?)\*', r'<i>\1</i>', ligne)
+                elements.append(Paragraph(ligne, style_corps))
+
+        # Pied de page
+        elements.append(Spacer(1, 20))
+        elements.append(HRFlowable(width="100%", thickness=0.5, color=GOLD))
+        elements.append(Paragraph(
+            "Document généré par l'assistant juridique IA · Cabinet de Maître Boubou · Confidentiel",
+            style_sous_titre
+        ))
+
+        doc.build(elements)
+        buffer.seek(0)
+
+        from flask import send_file
+        nom_fichier = nom.replace(" ", "_").replace("/", "-") + ".pdf"
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=nom_fichier,
+            mimetype="application/pdf"
+        )
+
+    except Exception as e:
+        print("ERREUR EXPORT PDF:", str(e))
+        return jsonify({"erreur": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
