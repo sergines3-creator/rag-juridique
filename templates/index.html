@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Cabinet de Maître Boubou</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
 :root {
   --bg-dark: #0F172A;
@@ -48,7 +50,7 @@ header {
 }
 .logo-text { font-family:'Playfair Display',serif; font-size:18px; }
 .logo-text span { color:var(--gold); }
-.header-right { display:flex; align-items:center; gap:24px; }
+.header-right { display:flex; align-items:center; gap:12px; }
 .status {
   display:flex; align-items:center; gap:6px;
   font-size:12px; color:var(--text-secondary);
@@ -73,6 +75,34 @@ header {
   font-family: 'Inter', sans-serif;
 }
 .hist-btn:hover { background: rgba(198,167,94,0.2); }
+
+/* TABS */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(198,167,94,0.08);
+  border: 1px solid var(--border-gold);
+  border-radius: 10px;
+  padding: 4px;
+}
+.tab-btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+.tab-btn.active {
+  background: var(--gold);
+  color: var(--bg-dark);
+  font-weight: 600;
+}
+.tab-btn:hover:not(.active) { color: var(--gold); }
 
 /* HISTORIQUE PANEL */
 .hist-panel {
@@ -119,6 +149,18 @@ header {
 .hist-item-q { font-size:13px; color:var(--text-primary); margin-bottom:4px; line-height:1.4; }
 .hist-item-date { font-size:11px; color:rgba(203,213,225,0.35); }
 .hist-empty { text-align:center; color:rgba(203,213,225,0.35); font-size:13px; margin-top:40px; }
+
+/* MAIN CONTENT AREA */
+.main-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* PANELS */
+.panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.panel.active { display: flex; }
 
 /* CHAT */
 .chat-container {
@@ -177,6 +219,37 @@ header {
   color:var(--text-primary);
   border-bottom-left-radius:4px;
 }
+/* Markdown dans les bulles AI */
+.message.ai .bubble h1,
+.message.ai .bubble h2,
+.message.ai .bubble h3 {
+  font-family:'Playfair Display',serif;
+  color:var(--gold);
+  margin: 10px 0 6px;
+}
+.message.ai .bubble h1 { font-size:18px; }
+.message.ai .bubble h2 { font-size:16px; }
+.message.ai .bubble h3 { font-size:14px; }
+.message.ai .bubble p { margin-bottom:8px; }
+.message.ai .bubble ul, .message.ai .bubble ol {
+  padding-left:20px; margin-bottom:8px;
+}
+.message.ai .bubble li { margin-bottom:4px; }
+.message.ai .bubble strong { color:var(--gold-hover); }
+.message.ai .bubble em { color:var(--text-secondary); font-style:italic; }
+.message.ai .bubble code {
+  background:rgba(198,167,94,0.1);
+  border:1px solid var(--border-gold);
+  padding:1px 6px; border-radius:4px;
+  font-size:12px;
+}
+.message.ai .bubble blockquote {
+  border-left:3px solid var(--gold);
+  padding-left:12px;
+  color:var(--text-secondary);
+  margin:8px 0;
+}
+
 .sources {
   margin-top:12px; padding-top:12px;
   border-top:1px solid rgba(255,255,255,0.06);
@@ -245,14 +318,195 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
   max-width:860px; margin-left:auto; margin-right:auto;
 }
 
-/* RESPONSIVE */
+/* ===================== */
+/* PANEL ANALYSE PDF     */
+/* ===================== */
+.analyse-container {
+  flex: 1; overflow-y: auto;
+  padding: 30px 20px;
+  max-width: 860px; width: 100%; margin: 0 auto;
+}
+.analyse-container::-webkit-scrollbar { width:4px; }
+.analyse-container::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
+
+.section-title {
+  font-family:'Playfair Display',serif;
+  font-size:24px; margin-bottom:8px;
+}
+.section-title span { color:var(--gold); }
+.section-desc {
+  color:var(--text-secondary); font-size:13px;
+  margin-bottom:28px; line-height:1.6;
+}
+
+.upload-zone {
+  border: 2px dashed var(--border-gold);
+  border-radius: 16px;
+  padding: 48px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.3s;
+  background: rgba(198,167,94,0.03);
+  margin-bottom: 20px;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--gold);
+  background: rgba(198,167,94,0.08);
+}
+.upload-icon { font-size:40px; margin-bottom:12px; }
+.upload-text { color:var(--text-secondary); font-size:14px; }
+.upload-text strong { color:var(--gold); }
+.upload-hint { font-size:12px; color:rgba(203,213,225,0.35); margin-top:6px; }
+
+.file-selected {
+  display: none;
+  align-items: center; gap:12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-gold);
+  border-radius: 12px; padding:14px 16px;
+  margin-bottom: 16px;
+}
+.file-selected.visible { display: flex; }
+.file-icon { font-size:24px; }
+.file-info { flex:1; }
+.file-name { font-size:14px; color:var(--text-primary); font-weight:500; }
+.file-size { font-size:12px; color:rgba(203,213,225,0.4); }
+.file-remove {
+  background:none; border:none;
+  color:rgba(203,213,225,0.4); font-size:18px;
+  cursor:pointer; transition:0.3s;
+}
+.file-remove:hover { color:#f87171; }
+
+.analyse-input-wrapper {
+  display:flex; gap:12px; margin-bottom:16px;
+}
+.analyse-input {
+  flex:1;
+  background:var(--bg-secondary);
+  border:1px solid var(--border-gold);
+  border-radius:12px; padding:12px 16px;
+  color:var(--text-primary); font-size:14px;
+  font-family:'Inter',sans-serif; outline:none;
+  transition:0.3s;
+}
+.analyse-input:focus {
+  border-color:var(--gold);
+  box-shadow:0 0 12px rgba(198,167,94,0.15);
+}
+.analyse-input::placeholder { color:rgba(203,213,225,0.4); }
+
+.gold-btn {
+  display:flex; align-items:center; gap:8px;
+  background:linear-gradient(135deg,#C6A75E,#D4B873);
+  border:none; border-radius:12px;
+  padding:12px 20px;
+  color:var(--bg-dark); font-size:14px; font-weight:600;
+  font-family:'Inter',sans-serif;
+  cursor:pointer; transition:0.3s; white-space:nowrap;
+}
+.gold-btn:hover { transform:scale(1.02); box-shadow:0 4px 15px rgba(198,167,94,0.4); }
+.gold-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
+
+.result-box {
+  display:none;
+  background:var(--bg-secondary);
+  border:1px solid var(--border-gold);
+  border-radius:16px; padding:24px;
+  margin-top:20px; animation:fadeUp 0.3s ease;
+}
+.result-box.visible { display:block; }
+.result-box-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:16px; padding-bottom:12px;
+  border-bottom:1px solid rgba(198,167,94,0.15);
+}
+.result-box-title { font-family:'Playfair Display',serif; color:var(--gold); font-size:16px; }
+.result-content {
+  font-size:14px; line-height:1.8; color:var(--text-primary);
+}
+.result-content h1, .result-content h2, .result-content h3 {
+  font-family:'Playfair Display',serif; color:var(--gold);
+  margin: 12px 0 6px;
+}
+.result-content h1 { font-size:18px; }
+.result-content h2 { font-size:16px; }
+.result-content h3 { font-size:14px; }
+.result-content p { margin-bottom:10px; }
+.result-content ul, .result-content ol { padding-left:20px; margin-bottom:10px; }
+.result-content li { margin-bottom:4px; }
+.result-content strong { color:var(--gold-hover); }
+.result-content em { color:var(--text-secondary); }
+.result-content blockquote {
+  border-left:3px solid var(--gold);
+  padding-left:12px; color:var(--text-secondary); margin:8px 0;
+}
+
+/* ======================== */
+/* PANEL GÉNÉRATION DOCS    */
+/* ======================== */
+.generation-container {
+  flex: 1; overflow-y: auto;
+  padding: 30px 20px;
+  max-width: 860px; width: 100%; margin: 0 auto;
+}
+.generation-container::-webkit-scrollbar { width:4px; }
+.generation-container::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
+
+.doc-types {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px; margin-bottom: 24px;
+}
+.doc-type-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-gold);
+  border-radius: 12px; padding:16px;
+  cursor:pointer; transition:0.3s; text-align:center;
+}
+.doc-type-card:hover, .doc-type-card.selected {
+  border-color:var(--gold);
+  background:rgba(198,167,94,0.1);
+}
+.doc-type-card.selected .doc-type-icon { color:var(--gold); }
+.doc-type-icon { font-size:24px; margin-bottom:8px; }
+.doc-type-name { font-size:13px; font-weight:500; }
+.doc-type-desc { font-size:11px; color:rgba(203,213,225,0.4); margin-top:4px; }
+
+.gen-form {
+  display:flex; flex-direction:column; gap:14px;
+  margin-bottom:20px;
+}
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-label { font-size:13px; color:var(--text-secondary); }
+.form-input, .form-textarea {
+  background:var(--bg-secondary);
+  border:1px solid var(--border-gold);
+  border-radius:10px; padding:12px 14px;
+  color:var(--text-primary); font-size:14px;
+  font-family:'Inter',sans-serif; outline:none; transition:0.3s;
+}
+.form-input:focus, .form-textarea:focus {
+  border-color:var(--gold);
+  box-shadow:0 0 12px rgba(198,167,94,0.15);
+}
+.form-input::placeholder, .form-textarea::placeholder { color:rgba(203,213,225,0.4); }
+.form-textarea { resize:vertical; min-height:90px; line-height:1.6; }
+
+@keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+/* Icônes dans les cards doc-type */
+.doc-type-card i { stroke: var(--text-secondary); transition:0.3s; }
+.doc-type-card.selected i, .doc-type-card:hover i { stroke: var(--gold); }
 @media(max-width:600px) {
   header { padding:14px 16px; }
   .logo-text { font-size:14px; }
   .hist-panel { width:100%; }
-  .chat-container { padding:16px 12px; }
+  .chat-container, .analyse-container, .generation-container { padding:16px 12px; }
   .message { max-width:95%; }
   .welcome h1 { font-size:24px; }
+  .tabs { gap:2px; }
+  .tab-btn { padding:5px 10px; font-size:11px; }
+  .doc-types { grid-template-columns: repeat(2, 1fr); }
 }
 </style>
 </head>
@@ -260,7 +514,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 
 <header>
   <div class="logo">
-    <div class="logo-icon">⚖</div>
+    <div class="logo-icon"><i data-lucide="scale" style="width:18px;height:18px;stroke:var(--gold);"></i></div>
     <div class="logo-text">Cabinet de <span>Maître Boubou</span></div>
   </div>
   <div class="header-right">
@@ -268,7 +522,13 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <div class="status-dot"></div>
       Assistant actif
     </div>
-    <button class="hist-btn" onclick="toggleHistorique()">📋 Historique</button>
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('chat', this)"><i data-lucide="message-circle" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Chat</button>
+      <button class="tab-btn" onclick="switchTab('analyse', this)"><i data-lucide="file-search" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Analyser PDF</button>
+      <button class="tab-btn" onclick="switchTab('generation', this)"><i data-lucide="file-pen" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Générer Doc</button>
+    </div>
+    <button class="hist-btn" onclick="toggleHistorique()"><i data-lucide="clock" style="width:14px;height:14px;vertical-align:middle;margin-right:5px;"></i> Historique</button>
   </div>
 </header>
 
@@ -278,135 +538,217 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     <div class="hist-title">Historique</div>
     <div class="hist-actions">
       <button class="hist-clear" onclick="clearHistorique()">Effacer tout</button>
-      <button class="hist-close" onclick="toggleHistorique()">✕</button>
+      <button class="hist-close" onclick="toggleHistorique()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
     </div>
   </div>
   <div id="historiqueList"></div>
 </div>
 
-<div class="chat-container" id="chatContainer">
-  <div class="welcome" id="welcome">
-    <h1>Intelligence <span>Juridique</span></h1>
-    <p>Posez votre question en langage naturel — je consulte la base documentaire juridique camerounaise et vous réponds avec précision.</p>
-    <div class="suggestions">
-      <button class="suggestion-btn" onclick="useSuggestion(this)">Obligations du gérant d'une SARL selon l'OHADA</button>
-      <button class="suggestion-btn" onclick="useSuggestion(this)">Procédure de licenciement au Cameroun</button>
-      <button class="suggestion-btn" onclick="useSuggestion(this)">Conditions de validité d'un contrat</button>
-      <button class="suggestion-btn" onclick="useSuggestion(this)">Droits du locataire en droit camerounais</button>
+<!-- MAIN CONTENT -->
+<div class="main-content">
+
+  <!-- PANEL CHAT -->
+  <div class="panel active" id="panel-chat">
+    <div class="chat-container" id="chatContainer">
+      <div class="welcome" id="welcome">
+        <h1>Intelligence <span>Juridique</span></h1>
+        <p>Posez votre question en langage naturel — je consulte la base documentaire juridique camerounaise et vous réponds avec précision.</p>
+        <div class="suggestions">
+          <button class="suggestion-btn" onclick="useSuggestion(this)">Obligations du gérant d'une SARL selon l'OHADA</button>
+          <button class="suggestion-btn" onclick="useSuggestion(this)">Procédure de licenciement au Cameroun</button>
+          <button class="suggestion-btn" onclick="useSuggestion(this)">Conditions de validité d'un contrat</button>
+          <button class="suggestion-btn" onclick="useSuggestion(this)">Droits du locataire en droit camerounais</button>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea id="questionInput" placeholder="Posez votre question juridique..." rows="1"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()"><i data-lucide="send" style="width:16px;height:16px;"></i></button>
+      </div>
+      <div class="input-hint">Entrée pour envoyer · Shift+Entrée pour un saut de ligne</div>
     </div>
   </div>
-</div>
 
-<div class="input-area">
-  <div class="input-wrapper">
-    <textarea id="questionInput" placeholder="Posez votre question juridique..." rows="1"></textarea>
-    <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+  <!-- PANEL ANALYSE PDF -->
+  <div class="panel" id="panel-analyse">
+    <div class="analyse-container">
+      <div class="section-title">Analyser un <span>Document PDF</span></div>
+      <p class="section-desc">Uploadez un contrat, jugement ou acte juridique — l'assistant en extrait les points clés et répond à vos questions.</p>
+
+      <!-- Zone upload -->
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+           ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="upload-icon"><i data-lucide="upload-cloud" style="width:44px;height:44px;stroke:var(--gold);stroke-width:1.2;"></i></div>
+        <div class="upload-text"><strong>Cliquez pour choisir</strong> ou glissez-déposez</div>
+        <div class="upload-hint">PDF uniquement · Max 10 Mo</div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="handleFileSelect(event)">
+
+      <!-- Fichier sélectionné -->
+      <div class="file-selected" id="fileSelected">
+        <div class="file-icon"><i data-lucide="file-text" style="width:28px;height:28px;stroke:var(--gold);stroke-width:1.4;"></i></div>
+        <div class="file-info">
+          <div class="file-name" id="fileName">document.pdf</div>
+          <div class="file-size" id="fileSize">0 Ko</div>
+        </div>
+        <button class="file-remove" onclick="removeFile()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+      </div>
+
+      <!-- Question + bouton -->
+      <div class="analyse-input-wrapper">
+        <input type="text" class="analyse-input" id="analyseQuestion"
+               placeholder="Ex : Quelles sont les clauses problématiques dans ce contrat ?"
+               onkeydown="if(event.key==='Enter') analyserDoc()">
+        <button class="gold-btn" id="analyseBtn" onclick="analyserDoc()">
+          <i data-lucide="search" style="width:15px;height:15px;"></i> Analyser
+        </button>
+      </div>
+
+      <!-- Résultat -->
+      <div class="result-box" id="analyseResult">
+        <div class="result-box-header">
+          <div class="result-box-title"><i data-lucide="clipboard-list" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Analyse du document</div>
+        </div>
+        <div class="result-content" id="analyseResultContent"></div>
+      </div>
+    </div>
   </div>
-  <div class="input-hint">Entrée pour envoyer · Shift+Entrée pour un saut de ligne</div>
-</div>
+
+  <!-- PANEL GÉNÉRATION -->
+  <div class="panel" id="panel-generation">
+    <div class="generation-container">
+      <div class="section-title">Générer un <span>Document Juridique</span></div>
+      <p class="section-desc">Choisissez un type de document, renseignez les informations nécessaires et obtenez un document prêt à l'emploi.</p>
+
+      <!-- Types de documents -->
+      <div class="doc-types">
+        <div class="doc-type-card selected" onclick="selectDocType(this, 'contrat_travail')">
+          <div class="doc-type-icon"><i data-lucide="briefcase" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Contrat de travail</div>
+          <div class="doc-type-desc">CDI, CDD, temps partiel</div>
+        </div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'mise_en_demeure')">
+          <div class="doc-type-icon"><i data-lucide="alert-triangle" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Mise en demeure</div>
+          <div class="doc-type-desc">Lettre de rappel formel</div>
+        </div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'contrat_bail')">
+          <div class="doc-type-icon"><i data-lucide="home" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Contrat de bail</div>
+          <div class="doc-type-desc">Location résidentielle</div>
+        </div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'statuts_sarl')">
+          <div class="doc-type-icon"><i data-lucide="building-2" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Statuts SARL</div>
+          <div class="doc-type-desc">Droit OHADA</div>
+        </div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'procuration')">
+          <div class="doc-type-icon"><i data-lucide="pen-line" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Procuration</div>
+          <div class="doc-type-desc">Mandat simple ou spécial</div>
+        </div>
+        <div class="doc-type-card" onclick="selectDocType(this, 'autre')">
+          <div class="doc-type-icon"><i data-lucide="file-plus" style="width:26px;height:26px;stroke-width:1.4;"></i></div>
+          <div class="doc-type-name">Autre</div>
+          <div class="doc-type-desc">Document personnalisé</div>
+        </div>
+      </div>
+
+      <!-- Formulaire -->
+      <div class="gen-form">
+        <div class="form-group">
+          <label class="form-label">Parties concernées (noms, qualités)</label>
+          <input type="text" class="form-input" id="genParties"
+                 placeholder="Ex : Jean Dupont (employeur) et Marie Martin (employée)">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Détails spécifiques</label>
+          <textarea class="form-textarea" id="genDetails"
+                    placeholder="Ex : Poste : Comptable, Salaire : 200 000 FCFA, Durée : CDI, Lieu : Douala..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Instructions particulières (optionnel)</label>
+          <input type="text" class="form-input" id="genInstructions"
+                 placeholder="Ex : Inclure une clause de non-concurrence de 2 ans">
+        </div>
+      </div>
+
+      <button class="gold-btn" id="genBtn" onclick="genererDoc()" style="width:100%; justify-content:center;">
+        <i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document
+      </button>
+
+      <!-- Résultat -->
+      <div class="result-box" id="genResult" style="margin-top:20px;">
+        <div class="result-box-header">
+          <div class="result-box-title"><i data-lucide="file-check" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Document généré</div>
+          <button class="gold-btn" onclick="copierDocument()" style="padding:6px 14px; font-size:12px;">
+            <i data-lucide="copy" style="width:13px;height:13px;"></i> Copier
+          </button>
+        </div>
+        <div class="result-content" id="genResultContent"></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- fin main-content -->
 
 <script>
-const API_URL = "https://web-production-bf6e1.up.railway.app/question";
-const HIST_URL = "https://web-production-bf6e1.up.railway.app/historique";
+const BASE_URL = "https://web-production-bf6e1.up.railway.app";
+const API_URL = BASE_URL + "/question";
+const HIST_URL = BASE_URL + "/historique";
+const ANALYSER_URL = BASE_URL + "/analyser";
+const GENERER_URL = BASE_URL + "/generer";
+
+document.addEventListener("DOMContentLoaded", () => lucide.createIcons());
 
 const chatContainer = document.getElementById("chatContainer");
 const input = document.getElementById("questionInput");
 const sendBtn = document.getElementById("sendBtn");
 
-// Auto-resize textarea
+let selectedFile = null;
+let selectedDocType = 'contrat_travail';
+
+// =========== TABS ===========
+function switchTab(tab, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  btn.classList.add('active');
+}
+
+// =========== CHAT ===========
 input.addEventListener("input", () => {
   input.style.height = "auto";
   input.style.height = Math.min(input.scrollHeight, 120) + "px";
 });
-
 input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
 });
-
-// Historique
-function toggleHistorique() {
-  const panel = document.getElementById("histPanel");
-  const visible = panel.style.display === "block";
-  panel.style.display = visible ? "none" : "block";
-  if (!visible) loadHistorique();
-}
-
-async function loadHistorique() {
-  const list = document.getElementById("historiqueList");
-  list.innerHTML = '<div class="hist-empty">Chargement...</div>';
-  try {
-    const res = await fetch(HIST_URL);
-    const data = await res.json();
-    if (!data.length) {
-      list.innerHTML = '<div class="hist-empty">Aucune conversation</div>';
-      return;
-    }
-    list.innerHTML = data.map(h => `
-      <div class="hist-item" onclick="reuseQuestion('${h.question.replace(/'/g,"\\'")}')">
-        <div class="hist-item-q">${h.question.length > 80 ? h.question.substring(0,80)+"..." : h.question}</div>
-        <div class="hist-item-date">${h.date}</div>
-      </div>
-    `).join("");
-  } catch(e) {
-    list.innerHTML = '<div class="hist-empty">Erreur de chargement</div>';
-  }
-}
-
-async function saveHistorique(question, reponse) {
-  try {
-    await fetch(HIST_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, reponse })
-    });
-  } catch(e) {}
-}
-
-async function clearHistorique() {
-  if (!confirm("Effacer tout l'historique ?")) return;
-  try {
-    await fetch(HIST_URL, { method: "DELETE" });
-    loadHistorique();
-  } catch(e) {}
-}
-
-function reuseQuestion(q) {
-  input.value = q;
-  toggleHistorique();
-  input.focus();
-}
-
-function useSuggestion(btn) {
-  input.value = btn.textContent;
-  input.focus();
-  sendMessage();
-}
 
 function addMessage(role, text, sources = []) {
   const welcome = document.getElementById("welcome");
   if (welcome) welcome.remove();
-
   const msg = document.createElement("div");
   msg.className = `message ${role}`;
-
   const avatar = document.createElement("div");
   avatar.className = `avatar ${role}`;
-  avatar.textContent = role === "ai" ? "⚖" : "AV";
-
+  avatar.innerHTML = role === "ai" ? '<i data-lucide="scale" style="width:16px;height:16px;stroke:var(--gold);"></i>' : "AV";
+  if (role === "ai") setTimeout(() => lucide.createIcons({ nodes: [avatar] }), 0);
   const bubble = document.createElement("div");
   bubble.className = "bubble";
-  bubble.innerHTML = text.replace(/\n/g, "<br>");
-
+  if (role === "ai") {
+    bubble.innerHTML = marked.parse(text);
+  } else {
+    bubble.textContent = text;
+  }
   if (sources.length > 0) {
     const src = document.createElement("div");
     src.className = "sources";
-    src.innerHTML = sources.map(s => `<span class="source-tag">📎 ${s}</span>`).join("");
+    src.innerHTML = sources.map(s => `<span class="source-tag"><i data-lucide="paperclip" style="width:11px;height:11px;vertical-align:middle;margin-right:4px;"></i>${s}</span>`).join("");
     bubble.appendChild(src);
+    setTimeout(() => lucide.createIcons({ nodes: [src] }), 0);
   }
-
   msg.appendChild(avatar);
   msg.appendChild(bubble);
   chatContainer.appendChild(msg);
@@ -415,38 +757,25 @@ function addMessage(role, text, sources = []) {
 
 function addTyping() {
   const wrapper = document.createElement("div");
-  wrapper.className = "message ai";
-  wrapper.id = "typing";
-
+  wrapper.className = "message ai"; wrapper.id = "typing";
   const avatar = document.createElement("div");
-  avatar.className = "avatar ai";
-  avatar.textContent = "⚖";
-
+  avatar.innerHTML = '<i data-lucide="scale" style="width:16px;height:16px;stroke:var(--gold);"></i>';
+  setTimeout(() => lucide.createIcons({ nodes: [avatar] }), 0);
   const indicator = document.createElement("div");
   indicator.className = "typing-indicator";
   indicator.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
-
-  wrapper.appendChild(avatar);
-  wrapper.appendChild(indicator);
+  wrapper.appendChild(avatar); wrapper.appendChild(indicator);
   chatContainer.appendChild(wrapper);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
-
-function removeTyping() {
-  const t = document.getElementById("typing");
-  if (t) t.remove();
-}
+function removeTyping() { const t = document.getElementById("typing"); if (t) t.remove(); }
 
 async function sendMessage() {
   const q = input.value.trim();
   if (!q) return;
-
   addMessage("user", q);
-  input.value = "";
-  input.style.height = "auto";
-  sendBtn.disabled = true;
-  addTyping();
-
+  input.value = ""; input.style.height = "auto";
+  sendBtn.disabled = true; addTyping();
   try {
     const res = await fetch(API_URL, {
       method: "POST",
@@ -455,15 +784,173 @@ async function sendMessage() {
     });
     const data = await res.json();
     removeTyping();
-    addMessage("ai", data.reponse || "Aucune reponse recue.", data.sources || []);
+    addMessage("ai", data.reponse || "Aucune réponse reçue.", data.sources || []);
     saveHistorique(q, data.reponse || "");
   } catch(err) {
     removeTyping();
-    addMessage("ai", "Erreur de connexion au serveur. Verifiez que votre serveur Python est lance sur localhost:5000.");
+    addMessage("ai", "Erreur de connexion au serveur.");
   } finally {
-    sendBtn.disabled = false;
-    input.focus();
+    sendBtn.disabled = false; input.focus();
   }
+}
+
+function useSuggestion(btn) {
+  input.value = btn.textContent; input.focus(); sendMessage();
+}
+
+// =========== HISTORIQUE ===========
+function toggleHistorique() {
+  const panel = document.getElementById("histPanel");
+  const visible = panel.style.display === "block";
+  panel.style.display = visible ? "none" : "block";
+  if (!visible) loadHistorique();
+}
+async function loadHistorique() {
+  const list = document.getElementById("historiqueList");
+  list.innerHTML = '<div class="hist-empty">Chargement...</div>';
+  try {
+    const res = await fetch(HIST_URL);
+    const data = await res.json();
+    if (!data.length) { list.innerHTML = '<div class="hist-empty">Aucune conversation</div>'; return; }
+    list.innerHTML = data.map(h => `
+      <div class="hist-item" onclick="reuseQuestion('${h.question.replace(/'/g,"\\'")}')">
+        <div class="hist-item-q">${h.question.length > 80 ? h.question.substring(0,80)+"..." : h.question}</div>
+        <div class="hist-item-date">${h.date}</div>
+      </div>
+    `).join("");
+  } catch(e) { list.innerHTML = '<div class="hist-empty">Erreur de chargement</div>'; }
+}
+async function saveHistorique(question, reponse) {
+  try {
+    await fetch(HIST_URL, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question, reponse })
+    });
+  } catch(e) {}
+}
+async function clearHistorique() {
+  if (!confirm("Effacer tout l'historique ?")) return;
+  try { await fetch(HIST_URL, { method: "DELETE" }); loadHistorique(); } catch(e) {}
+}
+function reuseQuestion(q) { input.value = q; toggleHistorique(); input.focus(); }
+
+// =========== ANALYSE PDF ===========
+function handleDragOver(e) {
+  e.preventDefault();
+  document.getElementById("uploadZone").classList.add("drag-over");
+}
+function handleDragLeave(e) {
+  document.getElementById("uploadZone").classList.remove("drag-over");
+}
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById("uploadZone").classList.remove("drag-over");
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === "application/pdf") setFile(file);
+  else alert("Veuillez déposer un fichier PDF.");
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) setFile(file);
+}
+function setFile(file) {
+  selectedFile = file;
+  document.getElementById("fileName").textContent = file.name;
+  document.getElementById("fileSize").textContent = (file.size / 1024).toFixed(1) + " Ko";
+  document.getElementById("fileSelected").classList.add("visible");
+  document.getElementById("uploadZone").style.display = "none";
+}
+function removeFile() {
+  selectedFile = null;
+  document.getElementById("fileSelected").classList.remove("visible");
+  document.getElementById("uploadZone").style.display = "block";
+  document.getElementById("fileInput").value = "";
+  document.getElementById("analyseResult").classList.remove("visible");
+}
+
+async function analyserDoc() {
+  const question = document.getElementById("analyseQuestion").value.trim();
+  if (!selectedFile) { alert("Veuillez d'abord uploader un fichier PDF."); return; }
+  if (!question) { alert("Veuillez poser une question sur le document."); return; }
+
+  const btn = document.getElementById("analyseBtn");
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Analyse en cours...';
+  lucide.createIcons();
+
+  const formData = new FormData();
+  formData.append("fichier", selectedFile);
+  formData.append("question", question);
+
+  try {
+    const res = await fetch(ANALYSER_URL, { method: "POST", body: formData });
+    const data = await res.json();
+    const resultContent = document.getElementById("analyseResultContent");
+    const resultBox = document.getElementById("analyseResult");
+    if (data.erreur) {
+      resultContent.innerHTML = `<p style="color:#f87171;">${data.erreur}</p>`;
+    } else {
+      resultContent.innerHTML = marked.parse(data.reponse || "Aucune réponse reçue.");
+    }
+    resultBox.classList.add("visible");
+    resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch(err) {
+    document.getElementById("analyseResultContent").innerHTML = '<p style="color:#f87171;">Erreur de connexion au serveur.</p>';
+    document.getElementById("analyseResult").classList.add("visible");
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i data-lucide="search" style="width:15px;height:15px;"></i> Analyser'; lucide.createIcons();
+  }
+}
+
+// =========== GÉNÉRATION ===========
+function selectDocType(card, type) {
+  document.querySelectorAll('.doc-type-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedDocType = type;
+}
+
+async function genererDoc() {
+  const parties = document.getElementById("genParties").value.trim();
+  const details = document.getElementById("genDetails").value.trim();
+  const instructions = document.getElementById("genInstructions").value.trim();
+
+  if (!parties) { alert("Veuillez renseigner les parties concernées."); return; }
+  if (!details) { alert("Veuillez renseigner les détails spécifiques."); return; }
+
+  const btn = document.getElementById("genBtn");
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Génération en cours...'; lucide.createIcons();
+
+  try {
+    const res = await fetch(GENERER_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type_document: selectedDocType,
+        parties: parties,
+        details: details,
+        instructions: instructions
+      })
+    });
+    const data = await res.json();
+    const resultContent = document.getElementById("genResultContent");
+    const resultBox = document.getElementById("genResult");
+    if (data.erreur) {
+      resultContent.innerHTML = `<p style="color:#f87171;">${data.erreur}</p>`;
+    } else {
+      resultContent.innerHTML = marked.parse(data.document || "Aucun document généré.");
+    }
+    resultBox.classList.add("visible");
+    resultBox.scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch(err) {
+    document.getElementById("genResultContent").innerHTML = '<p style="color:#f87171;">Erreur de connexion au serveur.</p>';
+    document.getElementById("genResult").classList.add("visible");
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document'; lucide.createIcons();
+  }
+}
+
+function copierDocument() {
+  const content = document.getElementById("genResultContent").innerText;
+  navigator.clipboard.writeText(content).then(() => alert("Document copié dans le presse-papier !"));
 }
 </script>
 </body>
