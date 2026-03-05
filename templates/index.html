@@ -62,20 +62,6 @@ header {
   animation: pulse 2s infinite;
 }
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-.hist-btn {
-  display:flex; align-items:center; gap:6px;
-  background: rgba(198,167,94,0.1);
-  border: 1px solid var(--border-gold);
-  border-radius: 8px;
-  padding: 7px 14px;
-  color: var(--gold);
-  font-size: 13px;
-  cursor: pointer;
-  transition: 0.3s;
-  font-family: 'Inter', sans-serif;
-}
-.hist-btn:hover { background: rgba(198,167,94,0.2); }
-
 /* TABS */
 .tabs {
   display: flex;
@@ -103,52 +89,6 @@ header {
   font-weight: 600;
 }
 .tab-btn:hover:not(.active) { color: var(--gold); }
-
-/* HISTORIQUE PANEL */
-.hist-panel {
-  display: none;
-  position: fixed;
-  top: 70px; right: 0;
-  width: 320px;
-  height: calc(100vh - 70px);
-  background: #1a2540;
-  border-left: 1px solid var(--border-gold);
-  z-index: 200;
-  overflow-y: auto;
-  padding: 20px;
-  animation: slideIn 0.3s ease;
-}
-@keyframes slideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }
-.hist-panel::-webkit-scrollbar { width:3px; }
-.hist-panel::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
-.hist-header {
-  display:flex; justify-content:space-between; align-items:center;
-  margin-bottom:16px;
-}
-.hist-title { font-family:'Playfair Display',serif; font-size:16px; color:var(--gold); }
-.hist-actions { display:flex; gap:10px; align-items:center; }
-.hist-clear {
-  background:none; border:none;
-  color:rgba(203,213,225,0.4); font-size:12px;
-  cursor:pointer; transition:0.3s;
-}
-.hist-clear:hover { color:#f87171; }
-.hist-close {
-  background:none; border:none;
-  color:rgba(203,213,225,0.4); font-size:18px;
-  cursor:pointer; transition:0.3s; line-height:1;
-}
-.hist-close:hover { color:var(--text-primary); }
-.hist-item {
-  background: var(--bg-dark);
-  border: 1px solid rgba(198,167,94,0.15);
-  border-radius: 8px; padding:12px;
-  margin-bottom: 8px; cursor:pointer; transition:0.3s;
-}
-.hist-item:hover { border-color: var(--border-gold); }
-.hist-item-q { font-size:13px; color:var(--text-primary); margin-bottom:4px; line-height:1.4; }
-.hist-item-date { font-size:11px; color:rgba(203,213,225,0.35); }
-.hist-empty { text-align:center; color:rgba(203,213,225,0.35); font-size:13px; margin-top:40px; }
 
 /* MAIN CONTENT AREA */
 .main-content {
@@ -563,7 +503,6 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 @media(max-width:600px) {
   header { padding:14px 16px; }
   .logo-text { font-size:14px; }
-  .hist-panel { width:100%; }
   .chat-container, .analyse-container, .generation-container { padding:16px 12px; }
   .message { max-width:95%; }
   .welcome h1 { font-size:24px; }
@@ -612,21 +551,8 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <button class="tab-btn" onclick="switchTab('documents', this)"><i data-lucide="database" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Documents</button>
       <button class="tab-btn" onclick="switchTab('generation', this)"><i data-lucide="file-pen" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Générer Doc</button>
     </div>
-    <button class="hist-btn" onclick="toggleHistorique()"><i data-lucide="clock" style="width:14px;height:14px;vertical-align:middle;margin-right:5px;"></i> Historique</button>
   </div>
 </header>
-
-<!-- PANNEAU HISTORIQUE -->
-<div class="hist-panel" id="histPanel">
-  <div class="hist-header">
-    <div class="hist-title">Historique</div>
-    <div class="hist-actions">
-      <button class="hist-clear" onclick="clearHistorique()">Effacer tout</button>
-      <button class="hist-close" onclick="toggleHistorique()"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
-    </div>
-  </div>
-  <div id="historiqueList"></div>
-</div>
 
 <!-- MAIN CONTENT -->
 <div class="main-content">
@@ -784,7 +710,6 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 <script>
 const BASE_URL = "https://web-production-bf6e1.up.railway.app";
 const API_URL = BASE_URL + "/question";
-const HIST_URL = BASE_URL + "/historique";
 const GENERER_URL = BASE_URL + "/generer";
 const UPLOAD_URL = BASE_URL + "/upload_document";
 const LISTE_DOCS_URL = BASE_URL + "/liste_documents";
@@ -916,7 +841,6 @@ async function sendMessage() {
     const data = await res.json();
     removeTyping();
     addMessage("ai", data.reponse || "Aucune réponse reçue.", data.sources || []);
-    saveHistorique(q, data.reponse || "");
   } catch(err) {
     removeTyping();
     addMessage("ai", "Erreur de connexion au serveur.");
@@ -928,42 +852,6 @@ async function sendMessage() {
 function useSuggestion(btn) {
   input.value = btn.textContent; input.focus(); sendMessage();
 }
-
-// =========== HISTORIQUE ===========
-function toggleHistorique() {
-  const panel = document.getElementById("histPanel");
-  const visible = panel.style.display === "block";
-  panel.style.display = visible ? "none" : "block";
-  if (!visible) loadHistorique();
-}
-async function loadHistorique() {
-  const list = document.getElementById("historiqueList");
-  list.innerHTML = '<div class="hist-empty">Chargement...</div>';
-  try {
-    const res = await fetch(HIST_URL);
-    const data = await res.json();
-    if (!data.length) { list.innerHTML = '<div class="hist-empty">Aucune conversation</div>'; return; }
-    list.innerHTML = data.map(h => `
-      <div class="hist-item" onclick="reuseQuestion('${h.question.replace(/'/g,"\\'")}')">
-        <div class="hist-item-q">${h.question.length > 80 ? h.question.substring(0,80)+"..." : h.question}</div>
-        <div class="hist-item-date">${h.date}</div>
-      </div>
-    `).join("");
-  } catch(e) { list.innerHTML = '<div class="hist-empty">Erreur de chargement</div>'; }
-}
-async function saveHistorique(question, reponse) {
-  try {
-    await fetch(HIST_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, reponse })
-    });
-  } catch(e) {}
-}
-async function clearHistorique() {
-  if (!confirm("Effacer tout l'historique ?")) return;
-  try { await fetch(HIST_URL, { method: "DELETE" }); loadHistorique(); } catch(e) {}
-}
-function reuseQuestion(q) { input.value = q; toggleHistorique(); input.focus(); }
 
 // =========== DOCUMENTS ===========
 function handleDragOver(e) {
