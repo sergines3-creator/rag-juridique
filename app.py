@@ -1,5 +1,6 @@
 import sys
 import io
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
@@ -30,6 +31,9 @@ ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 app = Flask(__name__)
 CORS(app)
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "dev-secret-change-en-prod")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
+jwt = JWTManager(app)
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = Anthropic(api_key=ANTHROPIC_KEY)
@@ -106,8 +110,22 @@ def obtenir_nom_document(document_id):
 def index():
     return render_template("index.html")
 
+@app.route("/login", methods=["POST"])
+def login():
+    try:
+        data = request.json
+        password = data.get("password", "")
+        mot_de_passe_correct = os.environ.get("CABINET_PASSWORD", "Cabinet-Boubou@123")
+        if password == mot_de_passe_correct:
+            token = create_access_token(identity="cabinet_boubou")
+            return jsonify({"token": token})
+        else:
+            return jsonify({"erreur": "Mot de passe incorrect"}), 401
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
 
 @app.route("/question", methods=["POST"])
+@jwt_required()
 def question():
     try:
         data = request.json
@@ -255,6 +273,7 @@ def analyser():
 
 
 @app.route("/generer", methods=["POST"])
+@jwt_required()
 def generer():
     try:
         data = request.json
@@ -328,6 +347,7 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
 
 # ============ UPLOAD DOCUMENT ============
 @app.route("/upload_document", methods=["POST"])
+@jwt_required()
 def upload_document():
     try:
         if "fichier" not in request.files:
@@ -392,6 +412,7 @@ def upload_document():
 
 # ============ LISTE DOCUMENTS ============
 @app.route("/liste_documents", methods=["GET"])
+@jwt_required()
 def liste_documents():
     try:
         result = supabase.table("documents").select("id, nom, type, cabinet").order("nom").execute()
@@ -402,6 +423,7 @@ def liste_documents():
 
 # ============ SUPPRIMER DOCUMENT ============
 @app.route("/supprimer_document", methods=["DELETE"])
+@jwt_required()
 def supprimer_document():
     try:
         data = request.json
@@ -417,6 +439,7 @@ def supprimer_document():
 
 # ============ SAUVEGARDER DOCUMENT GÉNÉRÉ ============
 @app.route("/sauvegarder_document", methods=["POST"])
+@jwt_required()
 def sauvegarder_document():
     try:
         data = request.json
@@ -453,6 +476,7 @@ def sauvegarder_document():
 
 # ============ EXPORT PDF ============
 @app.route("/export_pdf", methods=["POST"])
+@jwt_required()
 def export_pdf():
     try:
         data = request.json
@@ -590,11 +614,13 @@ SOURCES_VEILLE = [
 
 
 @app.route("/veille/sources", methods=["GET"])
+@jwt_required()
 def veille_sources():
     return jsonify(SOURCES_VEILLE)
 
 
 @app.route("/veille/synchroniser", methods=["POST"])
+@jwt_required()
 def veille_synchroniser():
     try:
         data = request.json

@@ -362,24 +362,42 @@ const EXPORT_PDF_URL = BASE_URL + "/export_pdf";
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
   renderForm('contrat_travail');
-  if (sessionStorage.getItem("cabinet_auth") === "ok") {
-    document.getElementById("loginOverlay").style.display = "none";
-  }
+  // Plus de vérification sessionStorage — token requis à chaque session
 });
 
-function checkLogin() {
+let authToken = null;
+
+async function checkLogin() {
   const pwd = document.getElementById("loginPassword").value;
-  if (pwd === "Cabinet-Boubou@123") {
-    sessionStorage.setItem("cabinet_auth", "ok");
-    const overlay = document.getElementById("loginOverlay");
-    overlay.style.opacity = "0";
-    overlay.style.transition = "opacity 0.4s ease";
-    setTimeout(() => overlay.style.display = "none", 400);
-  } else {
-    document.getElementById("loginError").classList.add("visible");
-    document.getElementById("loginPassword").style.borderColor = "#f87171";
-    setTimeout(() => { document.getElementById("loginPassword").style.borderColor = ""; }, 1500);
+  try {
+    const res = await fetch(BASE_URL + "/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwd })
+    });
+    const data = await res.json();
+    if (res.ok && data.token) {
+      authToken = data.token;
+      sessionStorage.setItem("cabinet_auth", "ok");
+      const overlay = document.getElementById("loginOverlay");
+      overlay.style.opacity = "0";
+      overlay.style.transition = "opacity 0.4s ease";
+      setTimeout(() => overlay.style.display = "none", 400);
+    } else {
+      document.getElementById("loginError").classList.add("visible");
+      document.getElementById("loginPassword").style.borderColor = "#f87171";
+      setTimeout(() => { document.getElementById("loginPassword").style.borderColor = ""; }, 1500);
+    }
+  } catch(err) {
+    alert("Erreur de connexion au serveur.");
   }
+}
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${authToken}`
+  };
 }
 
 function toggleLoginPwd() {
@@ -461,6 +479,7 @@ async function sendMessage() {
   try {
     const res = await fetch(API_URL, {
       method: "POST", headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify({ question: q })
     });
     const data = await res.json();
@@ -498,7 +517,11 @@ async function uploadDocument(e) {
   formData.append("fichier", file);
   formData.append("cabinet", "Cabinet Boubou");
   try {
-    const res = await fetch(UPLOAD_URL, { method: "POST", body: formData });
+    const res = await fetch(UPLOAD_URL, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${authToken}` },
+      body: formData
+    });
     const data = await res.json();
     document.getElementById("uploadProgress").style.display = "none";
     if (data.erreur) {
@@ -525,7 +548,7 @@ async function chargerDocuments() {
   liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;"><i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i><div style="margin-top:6px;">Chargement...</div></div>`;
   lucide.createIcons();
   try {
-    const res = await fetch(LISTE_DOCS_URL);
+    const res = await fetch(LISTE_DOCS_URL, { headers: authHeaders() });
     const docs = await res.json();
     if (!docs.length) {
       liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:30px 0;">Aucun document indexé</div>`;
@@ -556,7 +579,7 @@ async function supprimerDocument(id, nom) {
   if (!confirm(`Supprimer "${nom}" et tous ses chunks ?`)) return;
   try {
     const res = await fetch(SUPPRIMER_URL, {
-      method: "DELETE", headers: { "Content-Type": "application/json" },
+      method: "DELETE", headers: authHeaders(),
       body: JSON.stringify({ id })
     });
     const data = await res.json();
@@ -642,7 +665,7 @@ async function genererDoc() {
   lucide.createIcons();
   try {
     const res = await fetch(GENERER_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({ type: selectedDocType, donnees })
     });
     const data = await res.json();
@@ -682,7 +705,7 @@ async function enregistrerDocument() {
   lucide.createIcons();
   try {
     const res = await fetch(SAUVEGARDER_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({ nom, contenu, type_doc: selectedDocType })
     });
     const data = await res.json();
@@ -714,7 +737,7 @@ async function exporterPDF() {
   lucide.createIcons();
   try {
     const res = await fetch(EXPORT_PDF_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({ contenu, type_doc: selectedDocType, nom })
     });
     if (!res.ok) {
@@ -743,7 +766,7 @@ const VEILLE_SYNC_URL = BASE_URL + "/veille/synchroniser";
 async function chargerSources() {
   const liste = document.getElementById("listeSources");
   try {
-    const res = await fetch(VEILLE_SOURCES_URL);
+    const res = await fetch(VEILLE_SOURCES_URL, { headers: authHeaders() });
     const sources = await res.json();
     liste.innerHTML = sources.map(s => `
       <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:16px; margin-bottom:10px; display:flex; align-items:center; gap:14px; transition:0.2s;"
@@ -773,7 +796,7 @@ async function synchroniserSource(sourceId, sourceNom, btn) {
   lucide.createIcons();
   try {
     const res = await fetch(VEILLE_SYNC_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({ source_id: sourceId })
     });
     const data = await res.json();
@@ -794,7 +817,7 @@ async function synchroniserTout() {
   lucide.createIcons();
   try {
     const res = await fetch(VEILLE_SYNC_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST", headers: authHeaders(),
       body: JSON.stringify({})
     });
     const data = await res.json();
