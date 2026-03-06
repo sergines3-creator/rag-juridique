@@ -26,6 +26,13 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
+def log_erreur(contexte, erreur):
+    message = str(erreur)
+    # Masquer les infos sensibles
+    message = message.replace(SUPABASE_KEY or "", "***")
+    message = message.replace(ANTHROPIC_KEY or "", "***")
+    print(f"[ERREUR] {contexte}: {message[:200]}")
+
 # ─── CONFIG ──────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
@@ -215,7 +222,7 @@ def question():
         })
 
     except Exception as e:
-        print("ERREUR QUESTION:", str(e))
+        log_erreur("QUESTION", e)
         return jsonify({"reponse": "Erreur : " + str(e), "sources": []}), 500
 
 
@@ -291,7 +298,7 @@ def analyser():
         return jsonify({"analyse": response.content[0].text})
 
     except Exception as e:
-        print("ERREUR ANALYSER:", str(e))
+        log_erreur("ANALYSER", e)
         return jsonify({"erreur": str(e)}), 500
 
 
@@ -365,7 +372,7 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
         return jsonify({"document": response.content[0].text})
 
     except Exception as e:
-        print("ERREUR GENERER:", str(e))
+        log_erreur("GENERER", e)
         return jsonify({"erreur": str(e)}), 500
 
 
@@ -451,7 +458,7 @@ def upload_document():
         })
 
     except Exception as e:
-        print("ERREUR UPLOAD:", str(e))
+        log_erreur("UPLOAD", e)
         return jsonify({"erreur": str(e)}), 500
 
 
@@ -515,7 +522,7 @@ def sauvegarder_document():
         return jsonify({"succes": True, "message": f"Document '{nom}' sauvegardé", "document_id": doc_id})
 
     except Exception as e:
-        print("ERREUR SAUVEGARDE:", str(e))
+        log_erreur("SAUVEGARDE", e)
         return jsonify({"erreur": str(e)}), 500
 
 
@@ -621,7 +628,7 @@ def export_pdf():
         )
 
     except Exception as e:
-        print("ERREUR EXPORT PDF:", str(e))
+        log_erreur("EXPORT PDF", e)
         return jsonify({"erreur": str(e)}), 500
 
 
@@ -787,7 +794,7 @@ def veille_synchroniser():
         return jsonify({"succes": True, "resultats": resultats})
 
     except Exception as e:
-        print("ERREUR VEILLE:", str(e))
+        log_erreur("VEILLE", e)
         return jsonify({"erreur": str(e)}), 500
 
 
