@@ -1,5 +1,7 @@
 import sys
 import io
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
@@ -35,6 +37,11 @@ app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "dev-secret-chan
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
 jwt = JWTManager(app)
 
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = Anthropic(api_key=ANTHROPIC_KEY)
 
@@ -111,6 +118,7 @@ def index():
     return render_template("index.html")
 
 @app.route("/login", methods=["POST"])
+@limiter.limit("10 per minute")
 def login():
     try:
         data = request.json
@@ -126,6 +134,7 @@ def login():
 
 @app.route("/question", methods=["POST"])
 @jwt_required()
+@limiter.limit("30 per minute")
 def question():
     try:
         data = request.json
@@ -274,6 +283,7 @@ def analyser():
 
 @app.route("/generer", methods=["POST"])
 @jwt_required()
+@limiter.limit("20 per minute")
 def generer():
     try:
         data = request.json
@@ -348,6 +358,7 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
 # ============ UPLOAD DOCUMENT ============
 @app.route("/upload_document", methods=["POST"])
 @jwt_required()
+@limiter.limit("10 per minute")
 def upload_document():
     try:
         if "fichier" not in request.files:
@@ -621,6 +632,7 @@ def veille_sources():
 
 @app.route("/veille/synchroniser", methods=["POST"])
 @jwt_required()
+@limiter.limit("5 per minute")
 def veille_synchroniser():
     try:
         data = request.json
