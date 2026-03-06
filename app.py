@@ -1,19 +1,27 @@
-import requests
-from bs4 import BeautifulSoup
-import uuid
-import tempfile
-import os
 import sys
 import io
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
 from datetime import datetime
 from anthropic import Anthropic
 from supabase import create_client
+from bs4 import BeautifulSoup
+import requests
+import uuid
+import tempfile
 import os
+import re
+
+# ReportLab
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import cm
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
 # ─── CONFIG ──────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -26,7 +34,6 @@ CORS(app)
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = Anthropic(api_key=ANTHROPIC_KEY)
 
-# Memoire conversationnelle par session
 sessions = {}
 
 MOTS_VIDES = [
@@ -92,11 +99,13 @@ def obtenir_nom_document(document_id):
         pass
     return "Document inconnu"
 
+
 # ─── ROUTES ──────────────────────────────────────────────
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/question", methods=["POST"])
 def question():
@@ -167,6 +176,7 @@ def question():
         print("ERREUR QUESTION:", str(e))
         return jsonify({"reponse": "Erreur : " + str(e), "sources": []}), 500
 
+
 @app.route("/nouvelle-conversation", methods=["POST"])
 def nouvelle_conversation():
     try:
@@ -178,6 +188,7 @@ def nouvelle_conversation():
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
 
+
 @app.route("/documents")
 def documents():
     try:
@@ -185,6 +196,7 @@ def documents():
         return jsonify(result.data)
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
+
 
 @app.route("/analyser", methods=["POST"])
 def analyser():
@@ -196,10 +208,7 @@ def analyser():
         if not fichier.filename.endswith(".pdf"):
             return jsonify({"erreur": "Format PDF uniquement"}), 400
 
-        # Extraction du texte PDF
         import fitz
-        import tempfile
-        import os
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             fichier.save(tmp.name)
@@ -215,7 +224,6 @@ def analyser():
         if not texte.strip():
             return jsonify({"erreur": "Impossible d'extraire le texte du PDF"}), 400
 
-        # Limiter le texte pour ne pas depasser le contexte
         texte_limite = texte[:8000]
         question = request.form.get("question", "Fais une analyse complète de ce document.")
 
@@ -316,7 +324,9 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
     except Exception as e:
         print("ERREUR GENERER:", str(e))
         return jsonify({"erreur": str(e)}), 500
-    # ============ UPLOAD DOCUMENT ============
+
+
+# ============ UPLOAD DOCUMENT ============
 @app.route("/upload_document", methods=["POST"])
 def upload_document():
     try:
@@ -329,7 +339,7 @@ def upload_document():
         if not fichier.filename.endswith(".pdf"):
             return jsonify({"erreur": "Format PDF uniquement"}), 400
 
-        import fitz, tempfile, os, uuid
+        import fitz
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             fichier.save(tmp.name)
@@ -347,7 +357,6 @@ def upload_document():
         if not pages_texte:
             return jsonify({"erreur": "Impossible d'extraire le texte du PDF"}), 400
 
-        # Sauvegarder le document
         doc_id = str(uuid.uuid4())
         supabase.table("documents").insert({
             "id": doc_id,
@@ -356,14 +365,11 @@ def upload_document():
             "cabinet": cabinet
         }).execute()
 
-        # Découper et sauvegarder les chunks
         chunks_inseres = 0
         for page_data in pages_texte:
             texte = page_data["texte"]
-            # Découper en chunks de ~500 caractères
-            taille_chunk = 500
-            for j in range(0, len(texte), taille_chunk):
-                chunk_texte = texte[j:j + taille_chunk].strip()
+            for j in range(0, len(texte), 500):
+                chunk_texte = texte[j:j + 500].strip()
                 if len(chunk_texte) > 50:
                     supabase.table("chunks").insert({
                         "document_id": doc_id,
@@ -402,9 +408,7 @@ def supprimer_document():
         doc_id = data.get("id")
         if not doc_id:
             return jsonify({"erreur": "ID manquant"}), 400
-        # Supprimer les chunks d'abord
         supabase.table("chunks").delete().eq("document_id", doc_id).execute()
-        # Supprimer le document
         supabase.table("documents").delete().eq("id", doc_id).execute()
         return jsonify({"succes": True, "message": "Document supprimé"})
     except Exception as e:
@@ -423,7 +427,6 @@ def sauvegarder_document():
         if not contenu:
             return jsonify({"erreur": "Contenu vide"}), 400
 
-        import uuid
         doc_id = str(uuid.uuid4())
         supabase.table("documents").insert({
             "id": doc_id,
@@ -432,10 +435,8 @@ def sauvegarder_document():
             "cabinet": "Cabinet Boubou"
         }).execute()
 
-        # Indexer le contenu en chunks pour qu'il soit cherchable dans le chat
-        taille_chunk = 500
-        for j in range(0, len(contenu), taille_chunk):
-            chunk_texte = contenu[j:j + taille_chunk].strip()
+        for j in range(0, len(contenu), 500):
+            chunk_texte = contenu[j:j + 500].strip()
             if len(chunk_texte) > 50:
                 supabase.table("chunks").insert({
                     "document_id": doc_id,
@@ -448,16 +449,9 @@ def sauvegarder_document():
     except Exception as e:
         print("ERREUR SAUVEGARDE:", str(e))
         return jsonify({"erreur": str(e)}), 500
-    
-    # ============ EXPORT PDF ============
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
-import io, re
 
+
+# ============ EXPORT PDF ============
 @app.route("/export_pdf", methods=["POST"])
 def export_pdf():
     try:
@@ -479,85 +473,55 @@ def export_pdf():
             bottomMargin=2.5*cm
         )
 
-        # Couleurs cabinet
         GOLD = colors.HexColor("#C6A75E")
         DARK = colors.HexColor("#0F172A")
         GRAY = colors.HexColor("#64748B")
 
-        styles = getSampleStyleSheet()
-
-        # Style en-tête cabinet
         style_cabinet = ParagraphStyle(
-            "cabinet",
-            fontName="Helvetica-Bold",
-            fontSize=16,
-            textColor=GOLD,
-            alignment=TA_CENTER,
-            spaceAfter=4
+            "cabinet", fontName="Helvetica-Bold", fontSize=16,
+            textColor=GOLD, alignment=TA_CENTER, spaceAfter=4
         )
         style_sous_titre = ParagraphStyle(
-            "sous_titre",
-            fontName="Helvetica",
-            fontSize=9,
-            textColor=GRAY,
-            alignment=TA_CENTER,
-            spaceAfter=2
+            "sous_titre", fontName="Helvetica", fontSize=9,
+            textColor=GRAY, alignment=TA_CENTER, spaceAfter=2
         )
         style_titre_doc = ParagraphStyle(
-            "titre_doc",
-            fontName="Helvetica-Bold",
-            fontSize=13,
-            textColor=DARK,
-            alignment=TA_CENTER,
-            spaceBefore=16,
-            spaceAfter=8
+            "titre_doc", fontName="Helvetica-Bold", fontSize=13,
+            textColor=DARK, alignment=TA_CENTER, spaceBefore=16, spaceAfter=8
         )
         style_corps = ParagraphStyle(
-            "corps",
-            fontName="Helvetica",
-            fontSize=10,
-            textColor=DARK,
-            leading=16,
-            alignment=TA_JUSTIFY,
-            spaceAfter=8
+            "corps", fontName="Helvetica", fontSize=10,
+            textColor=DARK, leading=16, alignment=TA_JUSTIFY, spaceAfter=8
         )
         style_h1 = ParagraphStyle(
-            "h1", fontName="Helvetica-Bold",
-            fontSize=12, textColor=GOLD,
-            spaceBefore=12, spaceAfter=6
+            "h1", fontName="Helvetica-Bold", fontSize=12,
+            textColor=GOLD, spaceBefore=12, spaceAfter=6
         )
         style_h2 = ParagraphStyle(
-            "h2", fontName="Helvetica-Bold",
-            fontSize=11, textColor=DARK,
-            spaceBefore=10, spaceAfter=4
+            "h2", fontName="Helvetica-Bold", fontSize=11,
+            textColor=DARK, spaceBefore=10, spaceAfter=4
         )
         style_date = ParagraphStyle(
-            "date", fontName="Helvetica-Oblique",
-            fontSize=9, textColor=GRAY,
-            alignment=TA_CENTER, spaceAfter=4
+            "date", fontName="Helvetica-Oblique", fontSize=9,
+            textColor=GRAY, alignment=TA_CENTER, spaceAfter=4
         )
 
         elements = []
-
-        # En-tête cabinet
         elements.append(Paragraph("Cabinet de Maître Boubou", style_cabinet))
         elements.append(Paragraph("Avocat au Barreau du Cameroun · Douala", style_sous_titre))
-        elements.append(Paragraph(f"Document généré le {__import__('datetime').datetime.now().strftime('%d/%m/%Y à %H:%M')}", style_date))
+        elements.append(Paragraph(
+            f"Document généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}",
+            style_date
+        ))
         elements.append(HRFlowable(width="100%", thickness=1, color=GOLD, spaceAfter=12))
-
-        # Titre du document
         elements.append(Paragraph(nom.upper(), style_titre_doc))
         elements.append(HRFlowable(width="60%", thickness=0.5, color=GOLD, spaceAfter=16))
 
-        # Contenu — traitement ligne par ligne
-        lignes = contenu.split("\n")
-        for ligne in lignes:
+        for ligne in contenu.split("\n"):
             ligne = ligne.strip()
             if not ligne:
                 elements.append(Spacer(1, 6))
                 continue
-
-            # Nettoyer markdown
             if ligne.startswith("### "):
                 elements.append(Paragraph(ligne[4:], style_h2))
             elif ligne.startswith("## "):
@@ -565,12 +529,10 @@ def export_pdf():
             elif ligne.startswith("# "):
                 elements.append(Paragraph(ligne[2:], style_h1))
             else:
-                # Nettoyer ** et *
                 ligne = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', ligne)
                 ligne = re.sub(r'\*(.+?)\*', r'<i>\1</i>', ligne)
                 elements.append(Paragraph(ligne, style_corps))
 
-        # Pied de page
         elements.append(Spacer(1, 20))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=GOLD))
         elements.append(Paragraph(
@@ -581,7 +543,6 @@ def export_pdf():
         doc.build(elements)
         buffer.seek(0)
 
-        from flask import send_file
         nom_fichier = nom.replace(" ", "_").replace("/", "-") + ".pdf"
         return send_file(
             buffer,
@@ -593,7 +554,9 @@ def export_pdf():
     except Exception as e:
         print("ERREUR EXPORT PDF:", str(e))
         return jsonify({"erreur": str(e)}), 500
-    # ============ VEILLE JURIDIQUE ============
+
+
+# ============ VEILLE JURIDIQUE ============
 SOURCES_VEILLE = [
     {
         "id": "ohada",
@@ -625,22 +588,23 @@ SOURCES_VEILLE = [
     }
 ]
 
+
 @app.route("/veille/sources", methods=["GET"])
 def veille_sources():
     return jsonify(SOURCES_VEILLE)
+
 
 @app.route("/veille/synchroniser", methods=["POST"])
 def veille_synchroniser():
     try:
         data = request.json
-        source_id = data.get("source_id")  # None = toutes les sources
+        source_id = data.get("source_id")
 
         sources = SOURCES_VEILLE
         if source_id:
             sources = [s for s in SOURCES_VEILLE if s["id"] == source_id]
 
         resultats = []
-
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
@@ -660,7 +624,6 @@ def veille_synchroniser():
                 res.raise_for_status()
                 soup = BeautifulSoup(res.text, "html.parser")
 
-                # Trouver tous les liens PDF
                 liens_pdf = []
                 for a in soup.find_all("a", href=True):
                     href = a["href"]
@@ -669,13 +632,24 @@ def veille_synchroniser():
                         if not href.startswith("http"):
                             base = f"https://{source['domaine']}"
                             href = base + href if href.startswith("/") else base + "/" + href
-                        liens_pdf.append({"url": href, "nom": texte or href.split("/")[-1]})
+                        # Nom depuis URL
+                        nom_depuis_url = href.split("/")[-1].replace("-", " ").replace("_", " ").replace(".pdf", "")
+                        # Nom depuis élément parent
+                        parent = a.find_parent(["li", "tr", "div", "p"])
+                        titre_parent = parent.get_text(strip=True)[:80] if parent else ""
+                        # Choisir le meilleur nom
+                        if len(titre_parent) > 5 and titre_parent.lower() not in ["télécharger", "download", ""]:
+                            nom_final = titre_parent
+                        elif len(nom_depuis_url) > 5:
+                            nom_final = nom_depuis_url
+                        else:
+                            nom_final = texte or href.split("/")[-1]
+                        liens_pdf.append({"url": href, "nom": nom_final})
 
-                # Vérifier doublons et télécharger les nouveaux
                 docs_existants = supabase.table("documents").select("nom").execute()
                 noms_existants = [d["nom"].lower() for d in docs_existants.data]
 
-                for lien in liens_pdf[:10]:  # Max 10 par source
+                for lien in liens_pdf[:10]:
                     nom_fichier = lien["nom"][:100] + ".pdf" if not lien["nom"].endswith(".pdf") else lien["nom"][:100]
                     nom_clean = nom_fichier.lower().strip()
 
@@ -684,9 +658,9 @@ def veille_synchroniser():
                         continue
 
                     try:
+                        import fitz
                         pdf_res = requests.get(lien["url"], headers=headers, timeout=30)
                         if pdf_res.status_code == 200 and len(pdf_res.content) > 1000:
-                            import fitz
                             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                                 tmp.write(pdf_res.content)
                                 tmp_path = tmp.name
@@ -743,5 +717,7 @@ def veille_synchroniser():
     except Exception as e:
         print("ERREUR VEILLE:", str(e))
         return jsonify({"erreur": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
