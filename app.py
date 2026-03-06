@@ -646,24 +646,45 @@ SOURCES_VEILLE = [
     {
         "id": "izf",
         "nom": "CEMAC / IZF",
-        "url": "https://www.izf.net/content/textes-communautaires",
+        "url": "https://www.izf.net/textes-juridiques",
         "domaine": "izf.net",
         "actif": True
     },
     {
         "id": "juriafrica",
-        "nom": "Jurisprudence Africaine",
-        "url": "https://www.juriafrica.com/pays/cameroun",
-        "domaine": "juriafrica.com",
+        "nom": "Jurisprudence Cameroun",
+        "url": "https://www.legal-tools.org/search/?q=cameroun&type=legislation",
+        "domaine": "legal-tools.org",
         "actif": True
     },
     {
         "id": "spm",
         "nom": "Lois Camerounaises",
-        "url": "https://www.spm.gov.cm/site/?q=fr/content/textes-officiels",
-        "domaine": "spm.gov.cm",
+        "url": "https://www.droit-afrique.com/pays/cameroun",
+        "domaine": "droit-afrique.com",
         "actif": True
-    }
+    },
+    {
+        "id": "ccja",
+        "nom": "Jurisprudence CCJA OHADA",
+        "url": "https://www.ccja-ohada.org/decisions",
+        "domaine": "ccja-ohada.org",
+        "actif": True
+    },
+    {
+        "id": "wipo",
+        "nom": "Propriété Intellectuelle Cameroun (OMPI)",
+        "url": "https://www.wipo.int/wipolex/fr/profile/CM",
+        "domaine": "wipo.int",
+        "actif": True
+    },
+    {
+        "id": "juridicas",
+        "nom": "Droit Comparé International",
+        "url": "https://www.juridicas.unam.mx",
+        "domaine": "juridicas.unam.mx",
+        "actif": True
+    },
 ]
 
 
