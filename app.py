@@ -384,6 +384,26 @@ def upload_document():
         if not fichier.filename.endswith(".pdf"):
             return jsonify({"erreur": "Format PDF uniquement"}), 400
 
+        # Vérifier la signature du fichier (magic bytes)
+        header = fichier.read(5)
+        fichier.seek(0)
+        if header != b'%PDF-':
+            return jsonify({"erreur": "Fichier invalide — ce n'est pas un vrai PDF"}), 400
+
+        # Vérifier la taille max (10 Mo)
+        fichier.seek(0, 2)
+        taille = fichier.tell()
+        fichier.seek(0)
+        if taille > 10 * 1024 * 1024:
+            return jsonify({"erreur": "Fichier trop volumineux — max 10 Mo"}), 400
+        
+        # Vérifier si le document existe déjà
+        nom_fichier = fichier.filename.lower().strip()
+        docs_existants = supabase.table("documents").select("nom").execute()
+        noms_existants = [d["nom"].lower().strip() for d in docs_existants.data]
+        if nom_fichier in noms_existants:
+            return jsonify({"erreur": f"Ce document existe déjà dans la base : '{fichier.filename}'"}), 400
+
         import fitz
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
