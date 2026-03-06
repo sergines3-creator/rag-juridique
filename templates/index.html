@@ -362,7 +362,11 @@ const EXPORT_PDF_URL = BASE_URL + "/export_pdf";
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
   renderForm('contrat_travail');
-  // Plus de vérification sessionStorage — token requis à chaque session
+  const savedToken = sessionStorage.getItem("auth_token");
+  if (savedToken) {
+    authToken = savedToken;
+    document.getElementById("loginOverlay").style.display = "none";
+  }
 });
 
 let authToken = null;
@@ -378,7 +382,7 @@ async function checkLogin() {
     const data = await res.json();
     if (res.ok && data.token) {
       authToken = data.token;
-      sessionStorage.setItem("cabinet_auth", "ok");
+      sessionStorage.setItem("auth_token", data.token);
       const overlay = document.getElementById("loginOverlay");
       overlay.style.opacity = "0";
       overlay.style.transition = "opacity 0.4s ease";
