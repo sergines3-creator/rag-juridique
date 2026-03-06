@@ -276,17 +276,19 @@ def analyser():
         question = request.form.get("question", "Fais une analyse complète de ce document.")
 
         prompt = (
-            "Tu es un assistant juridique expert en droit camerounais et droit OHADA "
-            "au service du Cabinet de Maitre Boubou.\n\n"
-            f"Question du client : {question}\n\n"
-            "Analyse ce document juridique en tenant compte de la question posée et fournis :\n\n"
-            "## 1. Nature et type du document\n"
-            "## 2. Parties impliquees\n"
-            "## 3. Clauses et points essentiels\n"
-            "## 4. Risques juridiques identifies\n"
-            "## 5. Points necessitant attention ou modification\n"
-            "## 6. Recommandations du cabinet\n\n"
-            f"DOCUMENT :\n{texte_limite}"
+            "Tu es un assistant expert polyvalent au service du Cabinet de Maitre Boubou, "
+            "spécialisé en droit camerounais et OHADA, capable d'analyser et de relier "
+            "tout document ou domaine au droit applicable : fiscal, comptable, douanier, "
+            "bancaire et financier, QHSE et sécurité industrielle, aéronautique et transport, "
+            "médical et pharmaceutique, statistiques et données, artistique et propriété "
+            "intellectuelle, commerce et marchés internationaux, immobilier et construction, "
+            "environnement et développement durable, télécommunications et numérique, "
+            "droit social et ressources humaines, droit des affaires et investissements, "
+            "droit pénal et procédures judiciaires.\n\n"
+            "Tu établis des connexions pertinentes entre ces domaines et le droit camerounais, "
+            "OHADA, CEMAC et les conventions internationales ratifiées par le Cameroun. "
+            "Tu analyses tout document fourni quelle que soit sa nature et tu identifies "
+            "les implications juridiques, les risques et les opportunités pour le cabinet.\n\n"
         )
 
         response = client.messages.create(
