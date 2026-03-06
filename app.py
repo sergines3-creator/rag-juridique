@@ -45,7 +45,24 @@ limiter = Limiter(
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = Anthropic(api_key=ANTHROPIC_KEY)
 
-sessions = {}
+def get_session(session_id):
+    try:
+        result = supabase.table("sessions").select("historique").eq("id", session_id).execute()
+        if result.data:
+            return result.data[0]["historique"]
+    except Exception:
+        pass
+    return []
+
+def save_session(session_id, historique):
+    try:
+        supabase.table("sessions").upsert({
+            "id": session_id,
+            "historique": historique,
+            "updated_at": datetime.now().isoformat()
+        }).execute()
+    except Exception as e:
+        print("ERREUR SESSION:", str(e))
 
 MOTS_VIDES = [
     "quel", "quels", "quelle", "quelles", "dans", "pour", "avec", "sont",
@@ -144,10 +161,7 @@ def question():
         if not q:
             return jsonify({"erreur": "Question vide"}), 400
 
-        if session_id not in sessions:
-            sessions[session_id] = []
-
-        historique_session = sessions[session_id]
+        historique_session = get_session(session_id)
         chunks = rechercher_chunks(q)
 
         contexte = ""
@@ -192,7 +206,8 @@ def question():
         )
 
         reponse_texte = response.content[0].text
-        sessions[session_id].append({"question": q, "reponse": reponse_texte})
+        historique_session.append({"question": q, "reponse": reponse_texte})
+        save_session(session_id, historique_session)
 
         return jsonify({
             "reponse": reponse_texte,
@@ -209,8 +224,7 @@ def nouvelle_conversation():
     try:
         data = request.json
         session_id = data.get("session_id", "default")
-        if session_id in sessions:
-            del sessions[session_id]
+        supabase.table("sessions").delete().eq("id", session_id).execute()
         return jsonify({"ok": True})
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
