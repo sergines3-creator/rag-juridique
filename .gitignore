@@ -6,3 +6,4 @@ documents/
 *.pdf
 .venv/
 venv/
+gen_hash.py

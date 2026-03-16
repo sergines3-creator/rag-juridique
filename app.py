@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import sys
 import io
 from flask_limiter import Limiter
@@ -17,6 +20,7 @@ import uuid
 import tempfile
 import os
 import re
+from predict_endpoint import predict_bp 
 
 # ReportLab
 from reportlab.lib.pagesizes import A4
@@ -32,6 +36,7 @@ def log_erreur(contexte, erreur):
     message = message.replace(SUPABASE_KEY or "", "***")
     message = message.replace(ANTHROPIC_KEY or "", "***")
     print(f"[ERREUR] {contexte}: {message[:200]}")
+    app.register_blueprint(predict_bp) #
 
 # ─── CONFIG ──────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
