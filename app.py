@@ -21,7 +21,8 @@ import uuid
 import tempfile
 import os
 import re
-from predict_endpoint import predict_bp 
+from predict_endpoint import predict_bp
+from audit_logger import log_audit, auditer, ACTION_LOGIN, ACTION_LOGIN_ECHEC, ACTION_UPLOAD, ACTION_GENERATION, ACTION_EXPORT_PDF, ACTION_SUPPRESSION, ACTION_PREDICT 
 
 # ReportLab
 from reportlab.lib.pagesizes import A4
@@ -157,13 +158,20 @@ def index():
 @limiter.limit("10 per minute")
 def login():
     try:
+        import bcrypt
         data = request.json
-        password = data.get("password", "")
-        mot_de_passe_correct = os.environ.get("CABINET_PASSWORD", "Cabinet-Boubou@123")
-        if password == mot_de_passe_correct:
-            token = create_access_token(identity="cabinet_boubou")
+        password = data.get("password", "").encode()
+        hash_stocke = os.environ.get("CABINET_PASSWORD", "").encode()
+
+        if bcrypt.checkpw(password, hash_stocke):
+            token = create_access_token(
+                identity="cabinet_boubou",
+                expires_delta=timedelta(hours=8)
+            )
+            log_audit(ACTION_LOGIN, {"status": "succes"}, succes=True)
             return jsonify({"token": token})
         else:
+            log_audit(ACTION_LOGIN_ECHEC, {"status": "echec"}, succes=False)
             return jsonify({"erreur": "Mot de passe incorrect"}), 401
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
@@ -375,6 +383,7 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
         }
 
         if type_doc not in prompts:
+            log_audit(ACTION_GENERATION, {"type": type_doc})
             return jsonify({"erreur": "Type de document inconnu"}), 400
 
         response = client.messages.create(
@@ -398,6 +407,7 @@ def upload_document():
     try:
         if "fichier" not in request.files:
             return jsonify({"erreur": "Aucun fichier recu"}), 400
+        log_audit(ACTION_UPLOAD, {"fichier": fichier.filename, "chunks": chunks_inseres})
 
         fichier = request.files["fichier"]
         cabinet = request.form.get("cabinet", "Cabinet Boubou")
@@ -634,6 +644,7 @@ def export_pdf():
         buffer.seek(0)
 
         nom_fichier = nom.replace(" ", "_").replace("/", "-") + ".pdf"
+        log_audit(ACTION_EXPORT_PDF, {"nom": nom})
         return send_file(
             buffer,
             as_attachment=True,
