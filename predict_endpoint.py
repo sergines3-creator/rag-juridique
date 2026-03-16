@@ -3,7 +3,6 @@ import json
 from flask import Blueprint, request, jsonify
 from supabase import create_client
 from anthropic import Anthropic
-from sentence_transformers import SentenceTransformer
 
 from prediction.risk_analyzer import analyze_risk
 from prediction.success_estimator import estimate_success
@@ -11,14 +10,14 @@ from prediction.success_estimator import estimate_success
 supabase  = create_client(os.environ["SUPABASE_URL"], os.environ["SUPABASE_KEY"])
 anthropic = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
 
-_embedder = None
-def get_embedder():
-    global _embedder
-    if _embedder is None:
-        _embedder = SentenceTransformer("paraphrase-multilingual-mpnet-base-v2")
-    return _embedder
-
 predict_bp = Blueprint("predict", __name__)
+
+MOTS_VIDES = [
+    "quel", "quels", "quelle", "quelles", "dans", "pour", "avec", "sont",
+    "comment", "selon", "quand", "cette", "leurs", "leur", "conditions",
+    "les", "des", "une", "est", "par", "sur", "qui", "que", "quoi",
+    "entre", "plus", "tout", "aussi", "mais", "donc", "alors", "ainsi"
+]
 
 
 @predict_bp.route("/api/predict", methods=["POST"])
@@ -55,38 +54,55 @@ def predict():
 
 
 def _rag_search(query: str, top_k: int) -> list:
-    embedder  = get_embedder()
-    embedding = embedder.encode(query).tolist()
+    """
+    Recherche hybride : textuelle ilike sur la table chunks.
+    Compatible Railway sans sentence-transformers.
+    """
+    tous_chunks = []
+    ids_vus = set()
+
+    def ajouter(data):
+        for row in data:
+            cle = str(row.get("document_id", "")) + "-" + str(row.get("page_numero", ""))
+            if cle not in ids_vus:
+                ids_vus.add(cle)
+                meta = row.get("metadata") or {}
+                tous_chunks.append({
+                    "content":    row.get("contenu", ""),
+                    "similarity": 0.75,
+                    "metadata": {
+                        "source":  meta.get("source", "inconnue"),
+                        "domaine": meta.get("domaine", ""),
+                        "date":    meta.get("date", ""),
+                        "issue":   meta.get("issue", ""),
+                    }
+                })
 
     try:
-        result = supabase.rpc("match_chunks", {
-            "query_embedding": embedding,
-            "match_threshold": 0.65,
-            "match_count":     top_k
-        }).execute()
+        # Niveau 1 — recherche phrase complète
+        result = supabase.table("chunks").select(
+            "contenu, page_numero, document_id, metadata"
+        ).ilike("contenu", f"%{query.lower()}%").limit(top_k).execute()
+        ajouter(result.data)
 
-        chunks = []
-        for row in (result.data or []):
-            chunks.append({
-                "content":    row.get("contenu", ""),
-                "similarity": row.get("similarity", 0.5),
-                "metadata": {
-                    "source":  row.get("source", "inconnue"),
-                    "domaine": row.get("domaine", ""),
-                    "date":    row.get("date_dec", ""),
-                    "issue":   row.get("issue", ""),
-                }
-            })
-        return chunks
+        # Niveau 2 — recherche par mots longs si pas de résultats
+        if not tous_chunks:
+            mots = [m for m in query.lower().split() if len(m) > 4 and m not in MOTS_VIDES]
+            for mot in mots[:5]:
+                result = supabase.table("chunks").select(
+                    "contenu, page_numero, document_id, metadata"
+                ).ilike("contenu", f"%{mot}%").limit(5).execute()
+                ajouter(result.data)
 
     except Exception as e:
-        print(f"[RAG] Erreur Supabase : {e}")
-        return []
+        print(f"[RAG] Erreur recherche : {e}")
+
+    return tous_chunks[:top_k]
 
 
 def _claude_synthesis(query, domaine, risk, success, chunks) -> dict:
     context_snippets = "\n".join(
-        f"- [{c['metadata'].get('source','?')}] {c['content'][:200]}..."
+        f"- [{c['metadata'].get('source', '?')}] {c['content'][:200]}..."
         for c in chunks[:5]
     )
 
@@ -139,7 +155,7 @@ Sois précis, actionnable, ancré dans le droit OHADA/camerounais."""
             "points_vigilance":     [],
             "prochaines_etapes":    [],
             "alternatives":         [],
-            "synthese":             raw if 'raw' in dir() else "Erreur de synthèse."
+            "synthese":             raw if 'raw' in locals() else "Erreur de synthèse."
         }
     except Exception as e:
         print(f"[Claude] Erreur : {e}")

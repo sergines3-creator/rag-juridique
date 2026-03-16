@@ -9,4 +9,4 @@ beautifulsoup4
 requests
 flask-jwt-extended
 flask-limiter
-sentence-transformers
+**
