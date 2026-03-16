@@ -11,6 +11,7 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='repla
 
 from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
+from flask_talisman import Talisman
 from datetime import datetime
 from anthropic import Anthropic
 from supabase import create_client
@@ -44,6 +45,12 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 app = Flask(__name__)
+Talisman(app,
+    force_https=False,  # True en production sur Railway
+    strict_transport_security=True,
+    session_cookie_secure=True,
+    content_security_policy=False
+)
 CORS(app)
 app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "dev-secret-change-en-prod")
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
