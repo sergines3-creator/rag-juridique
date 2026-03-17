@@ -12,3 +12,5 @@ flask-limiter
 flask-talisman
 python-dotenv
 bcrypt
+pyotp
+qrcode[pil]
