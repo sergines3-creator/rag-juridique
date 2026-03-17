@@ -85,12 +85,20 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 .section-title { font-family:'Playfair Display',serif; font-size:24px; margin-bottom:8px; }
 .section-title span { color:var(--gold); }
 .section-desc { color:var(--text-secondary); font-size:13px; margin-bottom:28px; line-height:1.6; }
-.upload-zone { border: 2px dashed var(--border-gold); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: 0.3s; background: rgba(198,167,94,0.03); margin-bottom: 20px; }
+.upload-zone { border: 2px dashed var(--border-gold); border-radius: 16px; padding: 48px 20px; text-align: center; cursor: pointer; transition: 0.3s; background: rgba(198,167,94,0.03); margin-bottom: 12px; }
 .upload-zone:hover, .upload-zone.drag-over { border-color: var(--gold); background: rgba(198,167,94,0.08); }
 .upload-icon { font-size:40px; margin-bottom:12px; }
 .upload-text { color:var(--text-secondary); font-size:14px; }
 .upload-text strong { color:var(--gold); }
 .upload-hint { font-size:12px; color:rgba(203,213,225,0.35); margin-top:6px; }
+.sensible-toggle { display:flex; align-items:center; gap:10px; background:rgba(198,167,94,0.05); border:1px solid var(--border-gold); border-radius:10px; padding:12px 16px; margin-bottom:16px; cursor:pointer; transition:0.3s; user-select:none; }
+.sensible-toggle:hover { border-color:var(--gold); background:rgba(198,167,94,0.1); }
+.sensible-toggle.active { border-color:#ef4444; background:rgba(239,68,68,0.08); }
+.sensible-checkbox { width:18px; height:18px; border:2px solid var(--border-gold); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:0.2s; }
+.sensible-toggle.active .sensible-checkbox { background:#ef4444; border-color:#ef4444; }
+.sensible-label { font-size:13px; color:var(--text-secondary); flex:1; }
+.sensible-toggle.active .sensible-label { color:var(--text-primary); }
+.sensible-badge { font-size:10px; padding:2px 8px; border-radius:20px; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#ef4444; white-space:nowrap; }
 .gold-btn { display:flex; align-items:center; gap:8px; background:linear-gradient(135deg,#C6A75E,#D4B873); border:none; border-radius:12px; padding:12px 20px; color:var(--bg-dark); font-size:14px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:0.3s; white-space:nowrap; }
 .gold-btn:hover { transform:scale(1.02); box-shadow:0 4px 15px rgba(198,167,94,0.4); }
 .gold-btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:none; }
@@ -183,6 +191,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <button class="tab-btn active" onclick="switchTab('chat', this)"><i data-lucide="message-circle" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Chat</button>
       <button class="tab-btn" onclick="switchTab('documents', this)"><i data-lucide="database" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Documents</button>
       <button class="tab-btn" onclick="switchTab('generation', this)"><i data-lucide="file-pen" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Générer Doc</button>
+      <button class="tab-btn" onclick="switchTab('veille', this)"><i data-lucide="radio" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Veille</button>
     </div>
   </div>
 </header>
@@ -215,12 +224,28 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     <div class="analyse-container">
       <div class="section-title">Base <span>Documentaire</span></div>
       <p class="section-desc">Uploadez vos PDF juridiques pour les indexer — le chat pourra ensuite répondre à partir de leur contenu.</p>
+
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
         <div class="upload-icon"><i data-lucide="upload-cloud" style="width:44px;height:44px;stroke:var(--gold);stroke-width:1.2;"></i></div>
         <div class="upload-text"><strong>Cliquez pour choisir</strong> ou glissez-déposez</div>
         <div class="upload-hint">PDF uniquement · Max 10 Mo · Sera indexé dans la base</div>
       </div>
       <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="uploadDocument(event)">
+
+      <!-- Case à cocher document confidentiel -->
+      <div class="sensible-toggle" id="sensibleToggle" onclick="toggleSensible()">
+        <div class="sensible-checkbox" id="sensibleCheckbox">
+          <i data-lucide="check" style="width:12px;height:12px;stroke:#fff;display:none;" id="sensibleCheckIcon"></i>
+        </div>
+        <div class="sensible-label">
+          <strong>Document confidentiel</strong> — chiffrer avant indexation
+          <div style="font-size:11px; color:rgba(203,213,225,0.4); margin-top:2px;">Le contenu sera crypté en base de données. Même en cas d'intrusion, il sera illisible.</div>
+        </div>
+        <div class="sensible-badge" id="sensibleBadge" style="display:none;">
+          <i data-lucide="lock" style="width:10px;height:10px;vertical-align:middle;margin-right:3px;"></i>CHIFFRÉ
+        </div>
+      </div>
+
       <div id="uploadProgress" style="display:none; margin-bottom:16px;">
         <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
           <i data-lucide="loader" style="width:20px;height:20px;stroke:var(--gold);animation:spin 1s linear infinite;"></i>
@@ -236,6 +261,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           <div style="font-size:14px;" id="uploadSuccessText">Document indexé avec succès !</div>
         </div>
       </div>
+
       <div style="margin-top:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold);">Documents indexés</div>
@@ -293,7 +319,6 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <button class="gold-btn" id="genBtn" onclick="genererDoc()" style="width:100%; justify-content:center;">
         <i data-lucide="sparkles" style="width:15px;height:15px;"></i> Générer le document
       </button>
-      <button class="tab-btn" onclick="switchTab('veille', this)"><i data-lucide="radio" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Veille</button>
       <div class="result-box" id="genResult" style="margin-top:20px;">
         <div class="result-box-header">
           <div class="result-box-title"><i data-lucide="file-check" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Document généré</div>
@@ -319,38 +344,31 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       </div>
     </div>
   </div>
-<!-- PANEL VEILLE -->
-<div class="panel" id="panel-veille">
-  <div class="analyse-container">
-    <div class="section-title">Veille <span>Juridique</span></div>
-    <p class="section-desc">Synchronisez automatiquement les nouveaux textes juridiques depuis les sources officielles.</p>
 
-    <!-- Bouton global -->
-    <button class="gold-btn" id="veilleGlobalBtn" onclick="synchroniserTout()" style="width:100%; justify-content:center; margin-bottom:24px;">
-      <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> Synchroniser toutes les sources
-    </button>
-
-    <!-- Liste des sources -->
-    <div id="listeSources">
-      <div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;">
-        <i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i>
-        <div style="margin-top:6px;">Chargement des sources...</div>
+  <div class="panel" id="panel-veille">
+    <div class="analyse-container">
+      <div class="section-title">Veille <span>Juridique</span></div>
+      <p class="section-desc">Synchronisez automatiquement les nouveaux textes juridiques depuis les sources officielles.</p>
+      <button class="gold-btn" id="veilleGlobalBtn" onclick="synchroniserTout()" style="width:100%; justify-content:center; margin-bottom:24px;">
+        <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> Synchroniser toutes les sources
+      </button>
+      <div id="listeSources">
+        <div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;">
+          <i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i>
+          <div style="margin-top:6px;">Chargement des sources...</div>
+        </div>
       </div>
-    </div>
-
-    <!-- Journal -->
-    <div id="veilleJournal" style="display:none; margin-top:24px;">
-      <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold); margin-bottom:12px;">
-        Journal de synchronisation
+      <div id="veilleJournal" style="display:none; margin-top:24px;">
+        <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold); margin-bottom:12px;">Journal de synchronisation</div>
+        <div id="veilleJournalContent"></div>
       </div>
-      <div id="veilleJournalContent"></div>
     </div>
   </div>
-</div>
+
 </div>
 
 <script>
-const BASE_URL = "https://bynexflow.up.railway.app";
+const BASE_URL = window.location.origin;
 const API_URL = BASE_URL + "/question";
 const GENERER_URL = BASE_URL + "/generer";
 const UPLOAD_URL = BASE_URL + "/upload_document";
@@ -358,6 +376,11 @@ const LISTE_DOCS_URL = BASE_URL + "/liste_documents";
 const SUPPRIMER_URL = BASE_URL + "/supprimer_document";
 const SAUVEGARDER_URL = BASE_URL + "/sauvegarder_document";
 const EXPORT_PDF_URL = BASE_URL + "/export_pdf";
+const VEILLE_SOURCES_URL = BASE_URL + "/veille/sources";
+const VEILLE_SYNC_URL = BASE_URL + "/veille/synchroniser";
+
+let authToken = null;
+let documentSensible = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   lucide.createIcons();
@@ -366,10 +389,22 @@ document.addEventListener("DOMContentLoaded", () => {
   if (savedToken) {
     authToken = savedToken;
     document.getElementById("loginOverlay").style.display = "none";
+    chargerDocuments();
   }
 });
 
-let authToken = null;
+// ── Sensible toggle ────────────────────────────────────────
+function toggleSensible() {
+  documentSensible = !documentSensible;
+  const toggle = document.getElementById("sensibleToggle");
+  const checkbox = document.getElementById("sensibleCheckbox");
+  const checkIcon = document.getElementById("sensibleCheckIcon");
+  const badge = document.getElementById("sensibleBadge");
+  toggle.classList.toggle("active", documentSensible);
+  checkIcon.style.display = documentSensible ? "block" : "none";
+  badge.style.display = documentSensible ? "flex" : "none";
+  lucide.createIcons({ nodes: [badge] });
+}
 
 async function checkLogin() {
   const pwd = document.getElementById("loginPassword").value;
@@ -386,22 +421,17 @@ async function checkLogin() {
       const overlay = document.getElementById("loginOverlay");
       overlay.style.opacity = "0";
       overlay.style.transition = "opacity 0.4s ease";
-      setTimeout(() => overlay.style.display = "none", 400);
+      setTimeout(() => { overlay.style.display = "none"; chargerDocuments(); }, 400);
     } else {
       document.getElementById("loginError").classList.add("visible");
       document.getElementById("loginPassword").style.borderColor = "#f87171";
       setTimeout(() => { document.getElementById("loginPassword").style.borderColor = ""; }, 1500);
     }
-  } catch(err) {
-    alert("Erreur de connexion au serveur.");
-  }
+  } catch(err) { alert("Erreur de connexion au serveur."); }
 }
 
 function authHeaders() {
-  return {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${authToken}`
-  };
+  return { "Content-Type": "application/json", "Authorization": `Bearer ${authToken}` };
 }
 
 function toggleLoginPwd() {
@@ -463,6 +493,7 @@ function addTyping() {
   const wrapper = document.createElement("div");
   wrapper.className = "message ai"; wrapper.id = "typing";
   const avatar = document.createElement("div");
+  avatar.className = "avatar ai";
   avatar.innerHTML = '<i data-lucide="scale" style="width:16px;height:16px;stroke:var(--gold);"></i>';
   setTimeout(() => lucide.createIcons({ nodes: [avatar] }), 0);
   const indicator = document.createElement("div");
@@ -482,7 +513,7 @@ async function sendMessage() {
   sendBtn.disabled = true; addTyping();
   try {
     const res = await fetch(API_URL, {
-      method: "POST", headers: { "Content-Type": "application/json" },
+      method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ question: q })
     });
@@ -515,11 +546,13 @@ async function uploadDocument(e) {
   document.getElementById("uploadZone").style.display = "none";
   document.getElementById("uploadProgress").style.display = "block";
   document.getElementById("uploadSuccess").style.display = "none";
-  document.getElementById("uploadProgressText").textContent = `Indexation de "${file.name}"...`;
+  const sensibleLabel = documentSensible ? " (chiffré)" : "";
+  document.getElementById("uploadProgressText").textContent = `Indexation de "${file.name}"${sensibleLabel}...`;
   lucide.createIcons();
   const formData = new FormData();
   formData.append("fichier", file);
   formData.append("cabinet", "Cabinet Boubou");
+  formData.append("sensible", documentSensible ? "true" : "false");
   try {
     const res = await fetch(UPLOAD_URL, {
       method: "POST",
@@ -532,7 +565,8 @@ async function uploadDocument(e) {
       alert("Erreur : " + data.erreur);
       document.getElementById("uploadZone").style.display = "block";
     } else {
-      document.getElementById("uploadSuccessText").textContent = `"${file.name}" indexé — ${data.chunks} chunks créés`;
+      const chiffreMsg = documentSensible ? " · Contenu chiffré 🔒" : "";
+      document.getElementById("uploadSuccessText").textContent = `"${file.name}" indexé — ${data.chunks} chunks créés${chiffreMsg}`;
       document.getElementById("uploadSuccess").style.display = "block";
       document.getElementById("uploadZone").style.display = "block";
       document.getElementById("fileInput").value = "";
@@ -549,6 +583,7 @@ async function uploadDocument(e) {
 
 async function chargerDocuments() {
   const liste = document.getElementById("listeDocuments");
+  if (!liste) return;
   liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:20px 0;"><i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite;stroke:var(--gold);"></i><div style="margin-top:6px;">Chargement...</div></div>`;
   lucide.createIcons();
   try {
@@ -558,21 +593,22 @@ async function chargerDocuments() {
       liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:30px 0;">Aucun document indexé</div>`;
       return;
     }
-    liste.innerHTML = docs.map(doc => `
-      <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; transition:0.2s;"
-           onmouseover="this.style.borderColor='rgba(198,167,94,0.4)'" onmouseout="this.style.borderColor='rgba(198,167,94,0.15)'">
-        <i data-lucide="file-text" style="width:20px;height:20px;stroke:var(--gold);flex-shrink:0;"></i>
+    liste.innerHTML = docs.map(doc => {
+      const sensible = doc.metadata && doc.metadata.sensible;
+      return `
+      <div style="background:var(--bg-dark); border:1px solid ${sensible ? 'rgba(239,68,68,0.25)' : 'rgba(198,167,94,0.15)'}; border-radius:10px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; transition:0.2s;">
+        <i data-lucide="${sensible ? 'lock' : 'file-text'}" style="width:20px;height:20px;stroke:${sensible ? '#ef4444' : 'var(--gold)'};flex-shrink:0;"></i>
         <div style="flex:1; min-width:0;">
           <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${doc.nom.replace(".pdf","").replace(/-|_/g," ")}</div>
-          <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${doc.type}</div>
+          <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${doc.type}${sensible ? ' · <span style="color:#ef4444;">chiffré</span>' : ''}</div>
         </div>
         <button onclick="supprimerDocument('${doc.id}', '${doc.nom.replace(/'/g,"\\'")}')"
           style="background:none; border:none; cursor:pointer; color:rgba(203,213,225,0.3); transition:0.2s; flex-shrink:0;"
           onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(203,213,225,0.3)'">
           <i data-lucide="trash-2" style="width:15px;height:15px;"></i>
         </button>
-      </div>
-    `).join("");
+      </div>`;
+    }).join("");
     lucide.createIcons();
   } catch(err) {
     liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`;
@@ -744,18 +780,12 @@ async function exporterPDF() {
       method: "POST", headers: authHeaders(),
       body: JSON.stringify({ contenu, type_doc: selectedDocType, nom })
     });
-    if (!res.ok) {
-      const err = await res.json();
-      alert("Erreur : " + err.erreur);
-      return;
-    }
+    if (!res.ok) { const err = await res.json(); alert("Erreur : " + err.erreur); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url;
-    a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf";
-    a.click();
-    URL.revokeObjectURL(url);
+    a.href = url; a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf";
+    a.click(); URL.revokeObjectURL(url);
   } catch(err) { alert("Erreur de connexion."); }
   finally {
     btn.disabled = false;
@@ -763,9 +793,6 @@ async function exporterPDF() {
     lucide.createIcons();
   }
 }
-// =========== VEILLE ===========
-const VEILLE_SOURCES_URL = BASE_URL + "/veille/sources";
-const VEILLE_SYNC_URL = BASE_URL + "/veille/synchroniser";
 
 async function chargerSources() {
   const liste = document.getElementById("listeSources");
@@ -782,8 +809,7 @@ async function chargerSources() {
           <div style="font-size:14px; font-weight:500;">${s.nom}</div>
           <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${s.url}</div>
         </div>
-        <button class="gold-btn" onclick="synchroniserSource('${s.id}', '${s.nom}', this)"
-          style="padding:6px 14px; font-size:12px;">
+        <button class="gold-btn" onclick="synchroniserSource('${s.id}', '${s.nom}', this)" style="padding:6px 14px; font-size:12px;">
           <i data-lucide="download" style="width:13px;height:13px;"></i> Sync
         </button>
       </div>

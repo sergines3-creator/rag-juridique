@@ -70,6 +70,10 @@ from audit_logger import (
     ACTION_SUPPRESSION, ACTION_PREDICT
 )
 
+# ─── Chiffrement ─────────────────────────────────────────
+from encryption import chiffrer, dechiffrer, est_chiffre
+
+
 # ─── Log erreur ───────────────────────────────────────────
 def log_erreur(contexte, erreur):
     message = str(erreur)
@@ -120,6 +124,8 @@ def rechercher_chunks(question, limite=10):
             cle = str(chunk['document_id']) + "-" + str(chunk['page_numero'])
             if cle not in ids_vus:
                 ids_vus.add(cle)
+                if est_chiffre(chunk.get('contenu', '')):
+                    chunk['contenu'] = dechiffrer(chunk['contenu'])
                 tous_chunks.append(chunk)
 
     try:
@@ -480,15 +486,18 @@ def upload_document():
             "cabinet": cabinet
         }).execute()
 
+        est_sensible = request.form.get("sensible", "false").lower() == "true"
         for page_data in pages_texte:
             texte = page_data["texte"]
             for j in range(0, len(texte), 500):
                 chunk_texte = texte[j:j + 500].strip()
                 if len(chunk_texte) > 50:
+                    contenu_final = chiffrer(chunk_texte) if est_sensible else chunk_texte
                     supabase.table("chunks").insert({
                         "document_id": doc_id,
-                        "contenu": chunk_texte,
-                        "page_numero": page_data["page"]
+                        "contenu": contenu_final,
+                        "page_numero": page_data["page"],
+                        "metadata": {"sensible": est_sensible}
                     }).execute()
                     chunks_inseres += 1
 
