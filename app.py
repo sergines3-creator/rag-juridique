@@ -3,16 +3,16 @@ load_dotenv()
 
 import sys
 import io
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
 from flask_talisman import Talisman
-from datetime import datetime
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+from datetime import datetime, timedelta
 from anthropic import Anthropic
 from supabase import create_client
 from bs4 import BeautifulSoup
@@ -21,8 +21,6 @@ import uuid
 import tempfile
 import os
 import re
-from predict_endpoint import predict_bp
-from audit_logger import log_audit, auditer, ACTION_LOGIN, ACTION_LOGIN_ECHEC, ACTION_UPLOAD, ACTION_GENERATION, ACTION_EXPORT_PDF, ACTION_SUPPRESSION, ACTION_PREDICT 
 
 # ReportLab
 from reportlab.lib.pagesizes import A4
@@ -32,29 +30,24 @@ from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 
-def log_erreur(contexte, erreur):
-    message = str(erreur)
-    # Masquer les infos sensibles
-    message = message.replace(SUPABASE_KEY or "", "***")
-    message = message.replace(ANTHROPIC_KEY or "", "***")
-    print(f"[ERREUR] {contexte}: {message[:200]}")
-    app.register_blueprint(predict_bp) #
-
 # ─── CONFIG ──────────────────────────────────────────────
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 ANTHROPIC_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
 app = Flask(__name__)
+
 Talisman(app,
-    force_https=False,  # True en production sur Railway
+    force_https=False,
     strict_transport_security=True,
     session_cookie_secure=True,
     content_security_policy=False
 )
 CORS(app)
-app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "dev-secret-change-en-prod")
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
+
+app.config["JWT_SECRET_KEY"] = os.environ.get("JWT_SECRET_KEY", "CabinetBoubou-JWT-2026-SecretLong!XyZ#987")
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=8)
+
 jwt = JWTManager(app)
 
 limiter = Limiter(
@@ -62,9 +55,31 @@ limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["200 per day", "50 per hour"]
 )
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 client = Anthropic(api_key=ANTHROPIC_KEY)
 
+# ─── Blueprint prédiction ─────────────────────────────────
+from predict_endpoint import predict_bp
+app.register_blueprint(predict_bp)
+
+# ─── Audit logger ─────────────────────────────────────────
+from audit_logger import (
+    log_audit, ACTION_LOGIN, ACTION_LOGIN_ECHEC,
+    ACTION_UPLOAD, ACTION_GENERATION, ACTION_EXPORT_PDF,
+    ACTION_SUPPRESSION, ACTION_PREDICT
+)
+
+# ─── Log erreur ───────────────────────────────────────────
+def log_erreur(contexte, erreur):
+    message = str(erreur)
+    if SUPABASE_KEY:
+        message = message.replace(SUPABASE_KEY, "***")
+    if ANTHROPIC_KEY:
+        message = message.replace(ANTHROPIC_KEY, "***")
+    print(f"[ERREUR] {contexte}: {message[:200]}")
+
+# ─── Sessions ─────────────────────────────────────────────
 def get_session(session_id):
     try:
         result = supabase.table("sessions").select("historique").eq("id", session_id).execute()
@@ -84,6 +99,7 @@ def save_session(session_id, historique):
     except Exception as e:
         print("ERREUR SESSION:", str(e))
 
+# ─── Recherche chunks ─────────────────────────────────────
 MOTS_VIDES = [
     "quel", "quels", "quelle", "quelles", "dans", "pour", "avec", "sont",
     "comment", "selon", "quand", "cette", "leurs", "leur", "conditions",
@@ -148,11 +164,14 @@ def obtenir_nom_document(document_id):
     return "Document inconnu"
 
 
-# ─── ROUTES ──────────────────────────────────────────────
+# ════════════════════════════════════════
+# ROUTES
+# ════════════════════════════════════════
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/login", methods=["POST"])
 @limiter.limit("10 per minute")
@@ -164,17 +183,23 @@ def login():
         hash_stocke = os.environ.get("CABINET_PASSWORD", "").encode()
 
         if bcrypt.checkpw(password, hash_stocke):
-            token = create_access_token(
-                identity="cabinet_boubou",
-                expires_delta=timedelta(hours=8)
-            )
-            log_audit(ACTION_LOGIN, {"status": "succes"}, succes=True)
+            token = create_access_token(identity="cabinet_boubou")
+            try:
+                log_audit(ACTION_LOGIN, {"status": "succes"}, succes=True)
+            except Exception:
+                pass
             return jsonify({"token": token})
         else:
-            log_audit(ACTION_LOGIN_ECHEC, {"status": "echec"}, succes=False)
+            try:
+                log_audit(ACTION_LOGIN_ECHEC, {"status": "echec"}, succes=False)
+            except Exception:
+                pass
             return jsonify({"erreur": "Mot de passe incorrect"}), 401
+
     except Exception as e:
+        log_erreur("LOGIN", e)
         return jsonify({"erreur": str(e)}), 500
+
 
 @app.route("/question", methods=["POST"])
 @jwt_required()
@@ -293,22 +318,14 @@ def analyser():
             return jsonify({"erreur": "Impossible d'extraire le texte du PDF"}), 400
 
         texte_limite = texte[:8000]
-        question = request.form.get("question", "Fais une analyse complète de ce document.")
+        question_analyse = request.form.get("question", "Fais une analyse complète de ce document.")
 
         prompt = (
             "Tu es un assistant expert polyvalent au service du Cabinet de Maitre Boubou, "
             "spécialisé en droit camerounais et OHADA, capable d'analyser et de relier "
-            "tout document ou domaine au droit applicable : fiscal, comptable, douanier, "
-            "bancaire et financier, QHSE et sécurité industrielle, aéronautique et transport, "
-            "médical et pharmaceutique, statistiques et données, artistique et propriété "
-            "intellectuelle, commerce et marchés internationaux, immobilier et construction, "
-            "environnement et développement durable, télécommunications et numérique, "
-            "droit social et ressources humaines, droit des affaires et investissements, "
-            "droit pénal et procédures judiciaires.\n\n"
-            "Tu établis des connexions pertinentes entre ces domaines et le droit camerounais, "
-            "OHADA, CEMAC et les conventions internationales ratifiées par le Cameroun. "
-            "Tu analyses tout document fourni quelle que soit sa nature et tu identifies "
-            "les implications juridiques, les risques et les opportunités pour le cabinet.\n\n"
+            "tout document ou domaine au droit applicable.\n\n"
+            f"Document à analyser :\n{texte_limite}\n\n"
+            f"Question : {question_analyse}"
         )
 
         response = client.messages.create(
@@ -383,7 +400,6 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
         }
 
         if type_doc not in prompts:
-            log_audit(ACTION_GENERATION, {"type": type_doc})
             return jsonify({"erreur": "Type de document inconnu"}), 400
 
         response = client.messages.create(
@@ -391,6 +407,11 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
             max_tokens=3000,
             messages=[{"role": "user", "content": prompts[type_doc]}]
         )
+
+        try:
+            log_audit(ACTION_GENERATION, {"type": type_doc})
+        except Exception:
+            pass
 
         return jsonify({"document": response.content[0].text})
 
@@ -404,10 +425,11 @@ Structure avec : POUR CES MOTIFS et demandes formelles."""
 @jwt_required()
 @limiter.limit("10 per minute")
 def upload_document():
+    fichier = None
+    chunks_inseres = 0
     try:
         if "fichier" not in request.files:
             return jsonify({"erreur": "Aucun fichier recu"}), 400
-        log_audit(ACTION_UPLOAD, {"fichier": fichier.filename, "chunks": chunks_inseres})
 
         fichier = request.files["fichier"]
         cabinet = request.form.get("cabinet", "Cabinet Boubou")
@@ -415,20 +437,17 @@ def upload_document():
         if not fichier.filename.endswith(".pdf"):
             return jsonify({"erreur": "Format PDF uniquement"}), 400
 
-        # Vérifier la signature du fichier (magic bytes)
         header = fichier.read(5)
         fichier.seek(0)
         if header != b'%PDF-':
             return jsonify({"erreur": "Fichier invalide — ce n'est pas un vrai PDF"}), 400
 
-        # Vérifier la taille max (10 Mo)
         fichier.seek(0, 2)
         taille = fichier.tell()
         fichier.seek(0)
         if taille > 10 * 1024 * 1024:
             return jsonify({"erreur": "Fichier trop volumineux — max 10 Mo"}), 400
-        
-        # Vérifier si le document existe déjà
+
         nom_fichier = fichier.filename.lower().strip()
         docs_existants = supabase.table("documents").select("nom").execute()
         noms_existants = [d["nom"].lower().strip() for d in docs_existants.data]
@@ -461,7 +480,6 @@ def upload_document():
             "cabinet": cabinet
         }).execute()
 
-        chunks_inseres = 0
         for page_data in pages_texte:
             texte = page_data["texte"]
             for j in range(0, len(texte), 500):
@@ -473,6 +491,11 @@ def upload_document():
                         "page_numero": page_data["page"]
                     }).execute()
                     chunks_inseres += 1
+
+        try:
+            log_audit(ACTION_UPLOAD, {"fichier": fichier.filename, "chunks": chunks_inseres})
+        except Exception:
+            pass
 
         return jsonify({
             "succes": True,
@@ -508,6 +531,10 @@ def supprimer_document():
             return jsonify({"erreur": "ID manquant"}), 400
         supabase.table("chunks").delete().eq("document_id", doc_id).execute()
         supabase.table("documents").delete().eq("id", doc_id).execute()
+        try:
+            log_audit(ACTION_SUPPRESSION, {"document_id": doc_id})
+        except Exception:
+            pass
         return jsonify({"succes": True, "message": "Document supprimé"})
     except Exception as e:
         return jsonify({"erreur": str(e)}), 500
@@ -577,42 +604,18 @@ def export_pdf():
         DARK = colors.HexColor("#0F172A")
         GRAY = colors.HexColor("#64748B")
 
-        style_cabinet = ParagraphStyle(
-            "cabinet", fontName="Helvetica-Bold", fontSize=16,
-            textColor=GOLD, alignment=TA_CENTER, spaceAfter=4
-        )
-        style_sous_titre = ParagraphStyle(
-            "sous_titre", fontName="Helvetica", fontSize=9,
-            textColor=GRAY, alignment=TA_CENTER, spaceAfter=2
-        )
-        style_titre_doc = ParagraphStyle(
-            "titre_doc", fontName="Helvetica-Bold", fontSize=13,
-            textColor=DARK, alignment=TA_CENTER, spaceBefore=16, spaceAfter=8
-        )
-        style_corps = ParagraphStyle(
-            "corps", fontName="Helvetica", fontSize=10,
-            textColor=DARK, leading=16, alignment=TA_JUSTIFY, spaceAfter=8
-        )
-        style_h1 = ParagraphStyle(
-            "h1", fontName="Helvetica-Bold", fontSize=12,
-            textColor=GOLD, spaceBefore=12, spaceAfter=6
-        )
-        style_h2 = ParagraphStyle(
-            "h2", fontName="Helvetica-Bold", fontSize=11,
-            textColor=DARK, spaceBefore=10, spaceAfter=4
-        )
-        style_date = ParagraphStyle(
-            "date", fontName="Helvetica-Oblique", fontSize=9,
-            textColor=GRAY, alignment=TA_CENTER, spaceAfter=4
-        )
+        style_cabinet = ParagraphStyle("cabinet", fontName="Helvetica-Bold", fontSize=16, textColor=GOLD, alignment=TA_CENTER, spaceAfter=4)
+        style_sous_titre = ParagraphStyle("sous_titre", fontName="Helvetica", fontSize=9, textColor=GRAY, alignment=TA_CENTER, spaceAfter=2)
+        style_titre_doc = ParagraphStyle("titre_doc", fontName="Helvetica-Bold", fontSize=13, textColor=DARK, alignment=TA_CENTER, spaceBefore=16, spaceAfter=8)
+        style_corps = ParagraphStyle("corps", fontName="Helvetica", fontSize=10, textColor=DARK, leading=16, alignment=TA_JUSTIFY, spaceAfter=8)
+        style_h1 = ParagraphStyle("h1", fontName="Helvetica-Bold", fontSize=12, textColor=GOLD, spaceBefore=12, spaceAfter=6)
+        style_h2 = ParagraphStyle("h2", fontName="Helvetica-Bold", fontSize=11, textColor=DARK, spaceBefore=10, spaceAfter=4)
+        style_date = ParagraphStyle("date", fontName="Helvetica-Oblique", fontSize=9, textColor=GRAY, alignment=TA_CENTER, spaceAfter=4)
 
         elements = []
         elements.append(Paragraph("Cabinet de Maître Boubou", style_cabinet))
         elements.append(Paragraph("Avocat au Barreau du Cameroun · Douala", style_sous_titre))
-        elements.append(Paragraph(
-            f"Document généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}",
-            style_date
-        ))
+        elements.append(Paragraph(f"Document généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", style_date))
         elements.append(HRFlowable(width="100%", thickness=1, color=GOLD, spaceAfter=12))
         elements.append(Paragraph(nom.upper(), style_titre_doc))
         elements.append(HRFlowable(width="60%", thickness=0.5, color=GOLD, spaceAfter=16))
@@ -635,22 +638,18 @@ def export_pdf():
 
         elements.append(Spacer(1, 20))
         elements.append(HRFlowable(width="100%", thickness=0.5, color=GOLD))
-        elements.append(Paragraph(
-            "Document généré par l'assistant juridique IA · Cabinet de Maître Boubou · Confidentiel",
-            style_sous_titre
-        ))
+        elements.append(Paragraph("Document généré par l'assistant juridique IA · Cabinet de Maître Boubou · Confidentiel", style_sous_titre))
 
         doc.build(elements)
         buffer.seek(0)
 
         nom_fichier = nom.replace(" ", "_").replace("/", "-") + ".pdf"
-        log_audit(ACTION_EXPORT_PDF, {"nom": nom})
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name=nom_fichier,
-            mimetype="application/pdf"
-        )
+        try:
+            log_audit(ACTION_EXPORT_PDF, {"nom": nom})
+        except Exception:
+            pass
+
+        return send_file(buffer, as_attachment=True, download_name=nom_fichier, mimetype="application/pdf")
 
     except Exception as e:
         log_erreur("EXPORT PDF", e)
@@ -659,55 +658,13 @@ def export_pdf():
 
 # ============ VEILLE JURIDIQUE ============
 SOURCES_VEILLE = [
-    {
-        "id": "ohada",
-        "nom": "OHADA",
-        "url": "https://www.ohada.com/actes-uniformes.html",
-        "domaine": "ohada.com",
-        "actif": True
-    },
-    {
-        "id": "izf",
-        "nom": "CEMAC / IZF",
-        "url": "https://www.izf.net/textes-juridiques",
-        "domaine": "izf.net",
-        "actif": True
-    },
-    {
-        "id": "juriafrica",
-        "nom": "Jurisprudence Cameroun",
-        "url": "https://www.legal-tools.org/search/?q=cameroun&type=legislation",
-        "domaine": "legal-tools.org",
-        "actif": True
-    },
-    {
-        "id": "spm",
-        "nom": "Lois Camerounaises",
-        "url": "https://www.droit-afrique.com/pays/cameroun",
-        "domaine": "droit-afrique.com",
-        "actif": True
-    },
-    {
-        "id": "ccja",
-        "nom": "Jurisprudence CCJA OHADA",
-        "url": "https://www.ccja-ohada.org/decisions",
-        "domaine": "ccja-ohada.org",
-        "actif": True
-    },
-    {
-        "id": "wipo",
-        "nom": "Propriété Intellectuelle Cameroun (OMPI)",
-        "url": "https://www.wipo.int/wipolex/fr/profile/CM",
-        "domaine": "wipo.int",
-        "actif": True
-    },
-    {
-        "id": "juridicas",
-        "nom": "Droit Comparé International",
-        "url": "https://www.juridicas.unam.mx",
-        "domaine": "juridicas.unam.mx",
-        "actif": True
-    },
+    {"id": "ohada", "nom": "OHADA", "url": "https://www.ohada.com/actes-uniformes.html", "domaine": "ohada.com", "actif": True},
+    {"id": "izf", "nom": "CEMAC / IZF", "url": "https://www.izf.net/textes-juridiques", "domaine": "izf.net", "actif": True},
+    {"id": "juriafrica", "nom": "Jurisprudence Cameroun", "url": "https://www.legal-tools.org/search/?q=cameroun&type=legislation", "domaine": "legal-tools.org", "actif": True},
+    {"id": "spm", "nom": "Lois Camerounaises", "url": "https://www.droit-afrique.com/pays/cameroun", "domaine": "droit-afrique.com", "actif": True},
+    {"id": "ccja", "nom": "Jurisprudence CCJA OHADA", "url": "https://www.ccja-ohada.org/decisions", "domaine": "ccja-ohada.org", "actif": True},
+    {"id": "wipo", "nom": "Propriété Intellectuelle Cameroun (OMPI)", "url": "https://www.wipo.int/wipolex/fr/profile/CM", "domaine": "wipo.int", "actif": True},
+    {"id": "juridicas", "nom": "Droit Comparé International", "url": "https://www.juridicas.unam.mx", "domaine": "juridicas.unam.mx", "actif": True},
 ]
 
 
@@ -724,25 +681,15 @@ def veille_synchroniser():
     try:
         data = request.json
         source_id = data.get("source_id")
-
         sources = SOURCES_VEILLE
         if source_id:
             sources = [s for s in SOURCES_VEILLE if s["id"] == source_id]
 
         resultats = []
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
 
         for source in sources:
-            resultat = {
-                "source": source["nom"],
-                "source_id": source["id"],
-                "nouveaux": 0,
-                "doublons": 0,
-                "erreurs": 0,
-                "details": []
-            }
+            resultat = {"source": source["nom"], "source_id": source["id"], "nouveaux": 0, "doublons": 0, "erreurs": 0, "details": []}
 
             try:
                 res = requests.get(source["url"], headers=headers, timeout=15)
@@ -757,12 +704,9 @@ def veille_synchroniser():
                         if not href.startswith("http"):
                             base = f"https://{source['domaine']}"
                             href = base + href if href.startswith("/") else base + "/" + href
-                        # Nom depuis URL
                         nom_depuis_url = href.split("/")[-1].replace("-", " ").replace("_", " ").replace(".pdf", "")
-                        # Nom depuis élément parent
                         parent = a.find_parent(["li", "tr", "div", "p"])
                         titre_parent = parent.get_text(strip=True)[:80] if parent else ""
-                        # Choisir le meilleur nom
                         if len(titre_parent) > 5 and titre_parent.lower() not in ["télécharger", "download", ""]:
                             nom_final = titre_parent
                         elif len(nom_depuis_url) > 5:
