@@ -943,5 +943,267 @@ def veille_synchroniser():
         return jsonify({"erreur": str(e)}), 500
 
 
+# ============ ANALYSE PRÉDICTIVE ============
+
+DOMAINES_PREDICT = [
+    "commercial", "penal", "social", "civil", "fiscal",
+    "foncier", "ohada", "transit", "douanes", "impots",
+    "bancaire", "environnement", "administratif", "autre"
+]
+
+@app.route("/predict/upload_jurisprudence", methods=["POST"])
+@jwt_required()
+@limiter.limit("20 per minute")
+def upload_jurisprudence():
+    """Upload et indexe un document de jurisprudence pour la prédiction."""
+    fichier = None
+    try:
+        if "fichier" not in request.files:
+            return jsonify({"erreur": "Aucun fichier reçu"}), 400
+
+        fichier = request.files["fichier"]
+        titre = request.form.get("titre", fichier.filename).strip()
+        domaine = request.form.get("domaine", "autre").strip().lower()
+        issue = request.form.get("issue", "").strip().lower()
+        juridiction = request.form.get("juridiction", "").strip()
+        date_dec = request.form.get("date_dec", "").strip() or None
+        source = request.form.get("source", "").strip()
+        reference = request.form.get("reference", "").strip()
+
+        if not fichier.filename.endswith(".pdf"):
+            return jsonify({"erreur": "Format PDF uniquement"}), 400
+
+        header = fichier.read(5)
+        fichier.seek(0)
+        if header != b"%PDF-":
+            return jsonify({"erreur": "Fichier invalide"}), 400
+
+        import fitz
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
+            fichier.save(tmp.name)
+            tmp_path = tmp.name
+
+        doc = fitz.open(tmp_path)
+        texte = ""
+        for page in doc:
+            texte += page.get_text()
+        doc.close()
+        os.unlink(tmp_path)
+
+        if not texte.strip():
+            return jsonify({"erreur": "Impossible d'extraire le texte"}), 400
+
+        texte_tronque = texte[:6000]
+
+        # Générer embedding
+        embedding = None
+        try:
+            emb_res = requests.post(
+                VOYAGE_URL,
+                headers={"Authorization": f"Bearer {VOYAGE_API_KEY}", "Content-Type": "application/json"},
+                json={"input": [texte_tronque[:4096]], "model": VOYAGE_MODEL, "input_type": "document"},
+                timeout=15
+            )
+            emb_res.raise_for_status()
+            embedding = emb_res.json()["data"][0]["embedding"]
+        except Exception as e:
+            print(f"[VOYAGE] Embedding jurisprudence : {e}")
+
+        doc_id = str(uuid.uuid4())
+        data_insert = {
+            "id": doc_id,
+            "titre": titre,
+            "contenu": texte_tronque,
+            "domaine": domaine,
+            "issue": issue,
+            "juridiction": juridiction,
+            "source": source,
+            "reference": reference,
+        }
+        if embedding:
+            data_insert["embedding"] = embedding
+        if date_dec:
+            data_insert["date_dec"] = date_dec
+
+        supabase.table("jurisprudence_predict").insert(data_insert).execute()
+
+        try:
+            log_audit(ACTION_UPLOAD, {"type": "jurisprudence", "titre": titre, "domaine": domaine})
+        except Exception:
+            pass
+
+        return jsonify({
+            "succes": True,
+            "message": f"Jurisprudence '{titre}' indexée",
+            "id": doc_id,
+            "vectorise": embedding is not None
+        })
+
+    except Exception as e:
+        log_erreur("UPLOAD_JURISPRUDENCE", e)
+        return jsonify({"erreur": str(e)}), 500
+
+
+@app.route("/predict/liste_jurisprudence", methods=["GET"])
+@jwt_required()
+def liste_jurisprudence():
+    try:
+        domaine = request.args.get("domaine", "")
+        query = supabase.table("jurisprudence_predict").select(
+            "id, titre, domaine, issue, juridiction, date_dec, source, reference, created_at"
+        ).order("created_at", desc=True)
+        if domaine:
+            query = query.eq("domaine", domaine)
+        result = query.limit(100).execute()
+        return jsonify(result.data)
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+
+@app.route("/predict/supprimer_jurisprudence", methods=["DELETE"])
+@jwt_required()
+def supprimer_jurisprudence():
+    try:
+        data = request.json
+        doc_id = data.get("id")
+        if not doc_id:
+            return jsonify({"erreur": "ID manquant"}), 400
+        supabase.table("jurisprudence_predict").delete().eq("id", doc_id).execute()
+        return jsonify({"succes": True})
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+
+@app.route("/predict/analyser", methods=["POST"])
+@jwt_required()
+@limiter.limit("20 per minute")
+def predict_analyser():
+    """Analyse prédictive d'un dossier basée sur la jurisprudence indexée."""
+    try:
+        data = request.json
+        query = data.get("query", "").strip()
+        domaine = data.get("domaine", "autre").strip().lower()
+
+        if not query:
+            return jsonify({"erreur": "Description du dossier requise"}), 400
+
+        # Recherche vectorielle dans jurisprudence_predict
+        chunks = []
+        try:
+            embedding = get_query_embedding(query)
+            if embedding:
+                result = supabase.rpc("match_jurisprudence", {
+                    "query_embedding": embedding,
+                    "match_threshold": 0.3,
+                    "match_count": 10,
+                    "filtre_domaine": domaine if domaine != "autre" else None,
+                    "filtre_issue": None
+                }).execute()
+                for row in (result.data or []):
+                    chunks.append({
+                        "content": row.get("contenu", ""),
+                        "similarity": row.get("similarity", 0.5),
+                        "metadata": {
+                            "source": row.get("source", "inconnue"),
+                            "domaine": row.get("domaine", ""),
+                            "date": str(row.get("date_dec", "")),
+                            "issue": row.get("issue", ""),
+                            "titre": row.get("titre", ""),
+                            "juridiction": row.get("juridiction", ""),
+                        }
+                    })
+        except Exception as e:
+            print(f"[PREDICT] Recherche vectorielle : {e}")
+
+        # Fallback ilike si pas de résultats vectoriels
+        if not chunks:
+            try:
+                mots = [m for m in query.lower().split() if len(m) > 4]
+                for mot in mots[:3]:
+                    result = supabase.table("jurisprudence_predict").select(
+                        "id, titre, contenu, domaine, issue, juridiction, date_dec, source"
+                    ).ilike("contenu", f"%{mot}%").limit(5).execute()
+                    for row in (result.data or []):
+                        chunks.append({
+                            "content": row.get("contenu", ""),
+                            "similarity": 0.6,
+                            "metadata": {
+                                "source": row.get("source", "inconnue"),
+                                "domaine": row.get("domaine", ""),
+                                "date": str(row.get("date_dec", "")),
+                                "issue": row.get("issue", ""),
+                                "titre": row.get("titre", ""),
+                                "juridiction": row.get("juridiction", ""),
+                            }
+                        })
+            except Exception as e:
+                print(f"[PREDICT] Fallback ilike : {e}")
+
+        from prediction.risk_analyzer import analyze_risk
+        from prediction.success_estimator import estimate_success
+
+        risk = analyze_risk(chunks, domaine=domaine)
+        success = estimate_success(chunks)
+        recommendations = _claude_predict_synthesis(query, domaine, risk, success, chunks)
+
+        return jsonify({
+            "query": query,
+            "domaine": domaine,
+            "risk": risk,
+            "success": success,
+            "recommendations": recommendations,
+            "precedents_trouves": len(chunks)
+        })
+
+    except Exception as e:
+        log_erreur("PREDICT_ANALYSER", e)
+        return jsonify({"erreur": str(e)}), 500
+
+
+def _claude_predict_synthesis(query, domaine, risk, success, chunks):
+    context = "\n".join(
+        f"- [{c['metadata'].get('titre','?')} | {c['metadata'].get('issue','?')}] {c['content'][:200]}..."
+        for c in chunks[:5]
+    )
+
+    prompt = f"""Tu es Cabinet Boubou, assistant juridique expert en droit OHADA, CEMAC et camerounais.
+
+## Dossier soumis
+{query}
+Domaine : {domaine}
+
+## Analyse prédictive
+Score de risque : {risk['score']}/100 (niveau : {risk['level']})
+Probabilité de succès : {round(success['probability'] * 100)}% (confiance : {success['confidence']})
+Précédents analysés : {success['total_count']} dont {success['favorable_count']} favorables
+
+## Jurisprudence similaire trouvée
+{context or "Aucun précédent disponible dans la bibliothèque."}
+
+Produis des recommandations en JSON strict (sans markdown) :
+{{
+  "actions_prioritaires": ["action 1", "action 2", "action 3"],
+  "points_vigilance": ["point 1", "point 2"],
+  "prochaines_etapes": ["étape 1", "étape 2"],
+  "alternatives": ["alternative 1"],
+  "synthese": "Synthèse pour l'avocat (3-4 phrases)."
+}}"""
+
+    try:
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        raw = response.content[0].text.strip().replace("", "").strip()
+        return json.loads(raw)
+    except Exception as e:
+        return {
+            "actions_prioritaires": [], "points_vigilance": [],
+            "prochaines_etapes": [], "alternatives": [],
+            "synthese": f"Erreur de synthèse : {str(e)[:100]}"
+        }
+
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

@@ -150,6 +150,10 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
 .login-btn:hover { box-shadow: 0 4px 20px rgba(198,167,94,0.4); transform: translateY(-1px); }
 .login-error { color: #f87171; font-size: 13px; margin-top: 12px; display: none; }
 .login-error.visible { display: block; }
+/* PREDICTION PANEL */
+.predict-container { flex: 1; overflow-y: auto; padding: 20px; width: 100%; }
+.predict-container::-webkit-scrollbar { width:4px; }
+.predict-container::-webkit-scrollbar-thumb { background:var(--border-gold); border-radius:10px; }
 @media(max-width:600px) {
   header { padding:14px 16px; }
   .logo-text { font-size:14px; }
@@ -176,8 +180,6 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       </button>
     </div>
     <button class="login-btn" onclick="checkLogin()">Accéder au cabinet</button>
-
-    <!-- Section 2FA — apparaît après le mot de passe -->
     <div id="login2faSection" style="display:none; margin-top:20px;">
       <div style="border-top:1px solid rgba(198,167,94,0.2); padding-top:20px; margin-bottom:14px;">
         <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; justify-content:center;">
@@ -185,14 +187,10 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           <span style="font-size:14px; font-weight:500; color:var(--gold);">Double authentification</span>
         </div>
         <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">Ouvrez Authy et entrez le code à 6 chiffres</p>
-        <input type="text" id="login2faInput" class="login-input" placeholder="000000"
-          maxlength="6" inputmode="numeric" style="text-align:center; font-size:22px; letter-spacing:8px; font-family:monospace;"
-          oninput="this.value=this.value.replace(/\D/g,'')"
-          onkeydown="if(event.key==='Enter') checkLogin()">
+        <input type="text" id="login2faInput" class="login-input" placeholder="000000" maxlength="6" inputmode="numeric" style="text-align:center; font-size:22px; letter-spacing:8px; font-family:monospace;" oninput="this.value=this.value.replace(/[^0-9]/g,'')" onkeydown="if(event.key==='Enter') checkLogin()">
         <button class="login-btn" onclick="checkLogin()" style="margin-top:10px;">Valider le code</button>
       </div>
     </div>
-
     <div class="login-error" id="loginError">Mot de passe incorrect. Veuillez réessayer.</div>
   </div>
 </div>
@@ -209,6 +207,7 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       <button class="tab-btn" onclick="switchTab('documents', this)"><i data-lucide="database" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Documents</button>
       <button class="tab-btn" onclick="switchTab('generation', this)"><i data-lucide="file-pen" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Générer Doc</button>
       <button class="tab-btn" onclick="switchTab('veille', this)"><i data-lucide="radio" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Veille</button>
+      <button class="tab-btn" onclick="switchTab('prediction', this)"><i data-lucide="brain-circuit" style="width:13px;height:13px;vertical-align:middle;margin-right:5px;"></i>Prédiction</button>
     </div>
   </div>
 </header>
@@ -241,15 +240,12 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     <div class="analyse-container">
       <div class="section-title">Base <span>Documentaire</span></div>
       <p class="section-desc">Uploadez vos PDF juridiques pour les indexer — le chat pourra ensuite répondre à partir de leur contenu.</p>
-
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
         <div class="upload-icon"><i data-lucide="upload-cloud" style="width:44px;height:44px;stroke:var(--gold);stroke-width:1.2;"></i></div>
         <div class="upload-text"><strong>Cliquez pour choisir</strong> ou glissez-déposez</div>
         <div class="upload-hint">PDF uniquement · Max 10 Mo · Sera indexé dans la base</div>
       </div>
       <input type="file" id="fileInput" accept=".pdf" style="display:none" onchange="uploadDocument(event)">
-
-      <!-- Case à cocher document confidentiel -->
       <div class="sensible-toggle" id="sensibleToggle" onclick="toggleSensible()">
         <div class="sensible-checkbox" id="sensibleCheckbox">
           <i data-lucide="check" style="width:12px;height:12px;stroke:#fff;display:none;" id="sensibleCheckIcon"></i>
@@ -262,7 +258,6 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           <i data-lucide="lock" style="width:10px;height:10px;vertical-align:middle;margin-right:3px;"></i>CHIFFRÉ
         </div>
       </div>
-
       <div id="uploadProgress" style="display:none; margin-bottom:16px;">
         <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px;">
           <i data-lucide="loader" style="width:20px;height:20px;stroke:var(--gold);animation:spin 1s linear infinite;"></i>
@@ -278,7 +273,6 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
           <div style="font-size:14px;" id="uploadSuccessText">Document indexé avec succès !</div>
         </div>
       </div>
-
       <div style="margin-top:8px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
           <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold);">Documents indexés</div>
@@ -340,15 +334,9 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
         <div class="result-box-header">
           <div class="result-box-title"><i data-lucide="file-check" style="width:15px;height:15px;vertical-align:middle;margin-right:6px;stroke:var(--gold);"></i>Document généré</div>
           <div style="display:flex; gap:8px;">
-            <button class="gold-btn" onclick="copierDocument()" style="padding:6px 14px; font-size:12px;">
-              <i data-lucide="copy" style="width:13px;height:13px;"></i> Copier
-            </button>
-            <button class="gold-btn" onclick="enregistrerDocument()" id="saveBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1E6B4A,#2D9E6B);">
-              <i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer
-            </button>
-            <button class="gold-btn" onclick="exporterPDF()" id="exportBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1a3a5c,#2563eb);">
-              <i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF
-            </button>
+            <button class="gold-btn" onclick="copierDocument()" style="padding:6px 14px; font-size:12px;"><i data-lucide="copy" style="width:13px;height:13px;"></i> Copier</button>
+            <button class="gold-btn" onclick="enregistrerDocument()" id="saveBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1E6B4A,#2D9E6B);"><i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer</button>
+            <button class="gold-btn" onclick="exporterPDF()" id="exportBtn" style="padding:6px 14px; font-size:12px; background:linear-gradient(135deg,#1a3a5c,#2563eb);"><i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF</button>
           </div>
         </div>
         <div id="saveConfirm" style="display:none; margin-bottom:12px;">
@@ -382,6 +370,131 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
     </div>
   </div>
 
+  <div class="panel" id="panel-prediction">
+    <div class="predict-container">
+      <div class="section-title">Analyse <span>Prédictive</span></div>
+      <p class="section-desc">Soumettez un dossier et obtenez une analyse de risque basée sur la jurisprudence que vous avez indexée.</p>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:16px; padding:24px;">
+          <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold); margin-bottom:6px;">Bibliothèque de jurisprudence</div>
+          <p style="font-size:12px; color:rgba(203,213,225,0.5); margin-bottom:16px;">Uploadez arrêtés, décisions, conclusions et lois pour alimenter les prédictions.</p>
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:14px;">
+            <select id="jurisDomaine" class="form-input" style="font-size:12px; padding:8px 12px;">
+              <option value="commercial">Commercial / Affaires</option>
+              <option value="penal">Pénal</option>
+              <option value="social">Social / Travail</option>
+              <option value="civil">Civil / Famille</option>
+              <option value="fiscal">Fiscal / Impôts</option>
+              <option value="foncier">Foncier / Immobilier</option>
+              <option value="ohada">OHADA général</option>
+              <option value="transit">Transit / Douanes</option>
+              <option value="bancaire">Bancaire / Financier</option>
+              <option value="administratif">Administratif</option>
+              <option value="environnement">Environnement</option>
+              <option value="autre">Autre</option>
+            </select>
+            <select id="jurisIssue" class="form-input" style="font-size:12px; padding:8px 12px;">
+              <option value="favorable">Issue favorable</option>
+              <option value="defavorable">Issue défavorable</option>
+              <option value="partiel">Issue partielle / mixte</option>
+              <option value="">Issue non déterminée</option>
+            </select>
+            <input type="text" id="jurisJuridiction" class="form-input" placeholder="Juridiction (ex: TGI Douala, CCJA)" style="font-size:12px; padding:8px 12px;">
+            <input type="text" id="jurisReference" class="form-input" placeholder="Référence (ex: Arrêt n°123/2023)" style="font-size:12px; padding:8px 12px;">
+            <input type="date" id="jurisDate" class="form-input" style="font-size:12px; padding:8px 12px;">
+          </div>
+          <div class="upload-zone" style="padding:20px; margin-bottom:10px;" onclick="document.getElementById('jurisFile').click()">
+            <div style="font-size:12px; color:rgba(203,213,225,0.5);"><strong style="color:var(--gold);">Cliquez</strong> pour uploader un PDF</div>
+          </div>
+          <input type="file" id="jurisFile" accept=".pdf" style="display:none" onchange="uploadJurisprudence(event)">
+          <div id="jurisProgress" style="display:none; font-size:12px; color:var(--gold); padding:8px 0;">
+            <i data-lucide="loader" style="width:14px;height:14px;animation:spin 1s linear infinite;vertical-align:middle;"></i> Indexation en cours...
+          </div>
+          <div id="jurisSuccess" style="display:none; font-size:12px; color:#22c55e; padding:8px 0;">✓ Document indexé avec succès</div>
+          <div style="margin-top:16px; border-top:1px solid var(--border-gold); padding-top:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <span style="font-size:12px; font-weight:500; color:var(--text-secondary);">Documents indexés</span>
+              <button onclick="chargerJurisprudence()" style="background:none; border:none; cursor:pointer; color:var(--gold); font-size:11px;">↻ Actualiser</button>
+            </div>
+            <div id="listeJurisprudence" style="max-height:200px; overflow-y:auto;">
+              <div style="text-align:center; color:rgba(203,213,225,0.3); font-size:12px; padding:16px 0;">Aucun document indexé</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:16px; padding:24px;">
+          <div style="font-family:'Playfair Display',serif; font-size:16px; color:var(--gold); margin-bottom:6px;">Analyser un dossier</div>
+          <p style="font-size:12px; color:rgba(203,213,225,0.5); margin-bottom:16px;">Décrivez le dossier pour obtenir une analyse prédictive.</p>
+          <select id="predictDomaine" class="form-input" style="font-size:12px; padding:8px 12px; margin-bottom:10px; width:100%;">
+            <option value="commercial">Commercial / Affaires</option>
+            <option value="penal">Pénal</option>
+            <option value="social">Social / Travail</option>
+            <option value="civil">Civil / Famille</option>
+            <option value="fiscal">Fiscal / Impôts</option>
+            <option value="foncier">Foncier / Immobilier</option>
+            <option value="ohada">OHADA général</option>
+            <option value="transit">Transit / Douanes</option>
+            <option value="bancaire">Bancaire / Financier</option>
+            <option value="administratif">Administratif</option>
+            <option value="autre">Autre</option>
+          </select>
+          <textarea id="predictQuery" class="form-textarea" rows="5" placeholder="Décrivez le dossier : faits, parties, enjeux, questions juridiques..." style="width:100%; margin-bottom:12px;"></textarea>
+          <button class="gold-btn" id="predictBtn" onclick="lancerPrediction()" style="width:100%; justify-content:center;">
+            <i data-lucide="brain-circuit" style="width:15px;height:15px;"></i> Analyser le dossier
+          </button>
+        </div>
+      </div>
+      <div id="predictResults" style="display:none;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px;">
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Score de risque</div>
+            <div style="position:relative; width:120px; margin:0 auto 12px;">
+              <svg viewBox="0 0 120 70" width="120" height="70">
+                <path d="M10 65 A50 50 0 0 1 110 65" fill="none" stroke="rgba(198,167,94,0.15)" stroke-width="12" stroke-linecap="round"/>
+                <path id="riskArc" d="M10 65 A50 50 0 0 1 110 65" fill="none" stroke="#ef4444" stroke-width="12" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="157"/>
+              </svg>
+              <div style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); font-size:22px; font-weight:600;" id="riskScore">0</div>
+            </div>
+            <div id="riskLevel" style="font-size:13px; font-weight:500; color:#ef4444;">—</div>
+          </div>
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:20px; text-align:center;">
+            <div style="font-size:12px; color:var(--text-secondary); margin-bottom:12px;">Probabilité de succès</div>
+            <div style="position:relative; width:120px; margin:0 auto 12px;">
+              <svg viewBox="0 0 120 70" width="120" height="70">
+                <path d="M10 65 A50 50 0 0 1 110 65" fill="none" stroke="rgba(198,167,94,0.15)" stroke-width="12" stroke-linecap="round"/>
+                <path id="successArc" d="M10 65 A50 50 0 0 1 110 65" fill="none" stroke="#22c55e" stroke-width="12" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="157"/>
+              </svg>
+              <div style="position:absolute; bottom:0; left:50%; transform:translateX(-50%); font-size:22px; font-weight:600;" id="successScore">0%</div>
+            </div>
+            <div id="successConf" style="font-size:13px; color:var(--text-secondary);">Confiance : —</div>
+          </div>
+        </div>
+        <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:20px; margin-bottom:16px;">
+          <div style="font-family:'Playfair Display',serif; font-size:15px; color:var(--gold); margin-bottom:14px;">Synthèse juridique</div>
+          <div id="predictSynthese" style="font-size:13px; line-height:1.8; color:var(--text-primary);"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:18px;">
+            <div style="font-size:13px; font-weight:500; color:var(--gold); margin-bottom:10px;">Actions prioritaires</div>
+            <div id="predictActions" style="font-size:12px; line-height:1.8; color:var(--text-secondary);"></div>
+          </div>
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:18px;">
+            <div style="font-size:13px; font-weight:500; color:#ef4444; margin-bottom:10px;">Points de vigilance</div>
+            <div id="predictVigilance" style="font-size:12px; line-height:1.8; color:var(--text-secondary);"></div>
+          </div>
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:18px;">
+            <div style="font-size:13px; font-weight:500; color:#22c55e; margin-bottom:10px;">Prochaines étapes</div>
+            <div id="predictEtapes" style="font-size:12px; line-height:1.8; color:var(--text-secondary);"></div>
+          </div>
+          <div style="background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:14px; padding:18px;">
+            <div style="font-size:13px; font-weight:500; color:var(--gold); margin-bottom:10px;">Alternatives</div>
+            <div id="predictAlternatives" style="font-size:12px; line-height:1.8; color:var(--text-secondary);"></div>
+          </div>
+        </div>
+        <div style="margin-top:14px; font-size:11px; color:rgba(203,213,225,0.3); text-align:center;" id="predictMeta"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -395,6 +508,10 @@ const SAUVEGARDER_URL = BASE_URL + "/sauvegarder_document";
 const EXPORT_PDF_URL = BASE_URL + "/export_pdf";
 const VEILLE_SOURCES_URL = BASE_URL + "/veille/sources";
 const VEILLE_SYNC_URL = BASE_URL + "/veille/synchroniser";
+const JURIS_UPLOAD_URL = BASE_URL + "/predict/upload_jurisprudence";
+const JURIS_LISTE_URL = BASE_URL + "/predict/liste_jurisprudence";
+const JURIS_SUPPR_URL = BASE_URL + "/predict/supprimer_jurisprudence";
+const PREDICT_URL = BASE_URL + "/predict/analyser";
 
 let authToken = null;
 let documentSensible = false;
@@ -410,11 +527,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// ── Sensible toggle ────────────────────────────────────────
 function toggleSensible() {
   documentSensible = !documentSensible;
   const toggle = document.getElementById("sensibleToggle");
-  const checkbox = document.getElementById("sensibleCheckbox");
   const checkIcon = document.getElementById("sensibleCheckIcon");
   const badge = document.getElementById("sensibleBadge");
   toggle.classList.toggle("active", documentSensible);
@@ -428,13 +543,11 @@ async function checkLogin() {
   const code2fa = document.getElementById("login2faInput") ? document.getElementById("login2faInput").value.trim() : "";
   try {
     const res = await fetch(BASE_URL + "/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pwd, code_2fa: code2fa })
     });
     const data = await res.json();
     if (res.ok && data.require_2fa) {
-      // Afficher le champ 2FA
       document.getElementById("login2faSection").style.display = "block";
       document.getElementById("loginError").classList.remove("visible");
       document.getElementById("login2faInput").focus();
@@ -444,8 +557,7 @@ async function checkLogin() {
       authToken = data.token;
       sessionStorage.setItem("auth_token", data.token);
       const overlay = document.getElementById("loginOverlay");
-      overlay.style.opacity = "0";
-      overlay.style.transition = "opacity 0.4s ease";
+      overlay.style.opacity = "0"; overlay.style.transition = "opacity 0.4s ease";
       setTimeout(() => { overlay.style.display = "none"; chargerDocuments(); }, 400);
     } else {
       const errMsg = document.getElementById("loginError");
@@ -481,6 +593,7 @@ function switchTab(tab, btn) {
   btn.classList.add('active');
   if (tab === 'documents') chargerDocuments();
   if (tab === 'veille') chargerSources();
+  if (tab === 'prediction') chargerJurisprudence();
 }
 
 input.addEventListener("input", () => {
@@ -510,8 +623,7 @@ function addMessage(role, text, sources = []) {
     bubble.appendChild(src);
     setTimeout(() => lucide.createIcons({ nodes: [src] }), 0);
   }
-  msg.appendChild(avatar);
-  msg.appendChild(bubble);
+  msg.appendChild(avatar); msg.appendChild(bubble);
   chatContainer.appendChild(msg);
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
@@ -539,20 +651,12 @@ async function sendMessage() {
   input.value = ""; input.style.height = "auto";
   sendBtn.disabled = true; addTyping();
   try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({ question: q })
-    });
+    const res = await fetch(API_URL, { method: "POST", headers: authHeaders(), body: JSON.stringify({ question: q }) });
     const data = await res.json();
     removeTyping();
     addMessage("ai", data.reponse || "Aucune réponse reçue.", data.sources || []);
-  } catch(err) {
-    removeTyping();
-    addMessage("ai", "Erreur de connexion au serveur.");
-  } finally {
-    sendBtn.disabled = false; input.focus();
-  }
+  } catch(err) { removeTyping(); addMessage("ai", "Erreur de connexion au serveur."); }
+  finally { sendBtn.disabled = false; input.focus(); }
 }
 
 function useSuggestion(btn) { input.value = btn.textContent; input.focus(); sendMessage(); }
@@ -573,39 +677,26 @@ async function uploadDocument(e) {
   document.getElementById("uploadZone").style.display = "none";
   document.getElementById("uploadProgress").style.display = "block";
   document.getElementById("uploadSuccess").style.display = "none";
-  const sensibleLabel = documentSensible ? " (chiffré)" : "";
-  document.getElementById("uploadProgressText").textContent = `Indexation de "${file.name}"${sensibleLabel}...`;
+  document.getElementById("uploadProgressText").textContent = `Indexation de "${file.name}"${documentSensible ? " (chiffré)" : ""}...`;
   lucide.createIcons();
   const formData = new FormData();
   formData.append("fichier", file);
   formData.append("cabinet", "Cabinet Boubou");
   formData.append("sensible", documentSensible ? "true" : "false");
   try {
-    const res = await fetch(UPLOAD_URL, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${authToken}` },
-      body: formData
-    });
+    const res = await fetch(UPLOAD_URL, { method: "POST", headers: { "Authorization": `Bearer ${authToken}` }, body: formData });
     const data = await res.json();
     document.getElementById("uploadProgress").style.display = "none";
-    if (data.erreur) {
-      alert("Erreur : " + data.erreur);
-      document.getElementById("uploadZone").style.display = "block";
-    } else {
-      const chiffreMsg = documentSensible ? " · Contenu chiffré 🔒" : "";
-      document.getElementById("uploadSuccessText").textContent = `"${file.name}" indexé — ${data.chunks} chunks créés${chiffreMsg}`;
+    if (data.erreur) { alert("Erreur : " + data.erreur); document.getElementById("uploadZone").style.display = "block"; }
+    else {
+      document.getElementById("uploadSuccessText").textContent = `"${file.name}" indexé — ${data.chunks} chunks créés${documentSensible ? " · Contenu chiffré 🔒" : ""}`;
       document.getElementById("uploadSuccess").style.display = "block";
       document.getElementById("uploadZone").style.display = "block";
       document.getElementById("fileInput").value = "";
-      lucide.createIcons();
-      chargerDocuments();
+      lucide.createIcons(); chargerDocuments();
       setTimeout(() => document.getElementById("uploadSuccess").style.display = "none", 5000);
     }
-  } catch(err) {
-    document.getElementById("uploadProgress").style.display = "none";
-    document.getElementById("uploadZone").style.display = "block";
-    alert("Erreur de connexion au serveur.");
-  }
+  } catch(err) { document.getElementById("uploadProgress").style.display = "none"; document.getElementById("uploadZone").style.display = "block"; alert("Erreur de connexion."); }
 }
 
 async function chargerDocuments() {
@@ -616,42 +707,30 @@ async function chargerDocuments() {
   try {
     const res = await fetch(LISTE_DOCS_URL, { headers: authHeaders() });
     const docs = await res.json();
-    if (!docs.length) {
-      liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:30px 0;">Aucun document indexé</div>`;
-      return;
-    }
+    if (!docs.length) { liste.innerHTML = `<div style="text-align:center; color:rgba(203,213,225,0.35); font-size:13px; padding:30px 0;">Aucun document indexé</div>`; return; }
     liste.innerHTML = docs.map(doc => {
       const sensible = doc.metadata && doc.metadata.sensible;
-      return `
-      <div style="background:var(--bg-dark); border:1px solid ${sensible ? 'rgba(239,68,68,0.25)' : 'rgba(198,167,94,0.15)'}; border-radius:10px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px; transition:0.2s;">
+      return `<div style="background:var(--bg-dark); border:1px solid ${sensible ? 'rgba(239,68,68,0.25)' : 'rgba(198,167,94,0.15)'}; border-radius:10px; padding:14px 16px; margin-bottom:8px; display:flex; align-items:center; gap:12px;">
         <i data-lucide="${sensible ? 'lock' : 'file-text'}" style="width:20px;height:20px;stroke:${sensible ? '#ef4444' : 'var(--gold)'};flex-shrink:0;"></i>
         <div style="flex:1; min-width:0;">
           <div style="font-size:13px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${doc.nom.replace(".pdf","").replace(/-|_/g," ")}</div>
           <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${doc.type}${sensible ? ' · <span style="color:#ef4444;">chiffré</span>' : ''}</div>
         </div>
-        <button onclick="supprimerDocument('${doc.id}', '${doc.nom.replace(/'/g,"\\'")}')"
-          style="background:none; border:none; cursor:pointer; color:rgba(203,213,225,0.3); transition:0.2s; flex-shrink:0;"
-          onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(203,213,225,0.3)'">
+        <button onclick="supprimerDocument('${doc.id}', '${doc.nom.replace(/'/g,"\\'")}')" style="background:none; border:none; cursor:pointer; color:rgba(203,213,225,0.3);" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(203,213,225,0.3)'">
           <i data-lucide="trash-2" style="width:15px;height:15px;"></i>
         </button>
       </div>`;
     }).join("");
     lucide.createIcons();
-  } catch(err) {
-    liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`;
-  }
+  } catch(err) { liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`; }
 }
 
 async function supprimerDocument(id, nom) {
   if (!confirm(`Supprimer "${nom}" et tous ses chunks ?`)) return;
   try {
-    const res = await fetch(SUPPRIMER_URL, {
-      method: "DELETE", headers: authHeaders(),
-      body: JSON.stringify({ id })
-    });
+    const res = await fetch(SUPPRIMER_URL, { method: "DELETE", headers: authHeaders(), body: JSON.stringify({ id }) });
     const data = await res.json();
-    if (data.succes) chargerDocuments();
-    else alert("Erreur : " + data.erreur);
+    if (data.succes) chargerDocuments(); else alert("Erreur : " + data.erreur);
   } catch(err) { alert("Erreur de connexion."); }
 }
 
@@ -706,19 +785,14 @@ function renderForm(type) {
   document.getElementById("genForm").innerHTML = fields.map(f => `
     <div class="form-group">
       <label class="form-label">${f.label}</label>
-      ${f.textarea
-        ? `<textarea class="form-textarea" id="field_${f.id}" placeholder="${f.placeholder}"></textarea>`
-        : `<input type="text" class="form-input" id="field_${f.id}" placeholder="${f.placeholder}">`
-      }
+      ${f.textarea ? `<textarea class="form-textarea" id="field_${f.id}" placeholder="${f.placeholder}"></textarea>` : `<input type="text" class="form-input" id="field_${f.id}" placeholder="${f.placeholder}">`}
     </div>
   `).join("");
 }
 
 function selectDocType(card, type) {
   document.querySelectorAll('.doc-type-card').forEach(c => c.classList.remove('selected'));
-  card.classList.add('selected');
-  selectedDocType = type;
-  renderForm(type);
+  card.classList.add('selected'); selectedDocType = type; renderForm(type);
 }
 
 async function genererDoc() {
@@ -731,10 +805,7 @@ async function genererDoc() {
   btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Génération en cours...';
   lucide.createIcons();
   try {
-    const res = await fetch(GENERER_URL, {
-      method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ type: selectedDocType, donnees })
-    });
+    const res = await fetch(GENERER_URL, { method: "POST", headers: authHeaders(), body: JSON.stringify({ type: selectedDocType, donnees }) });
     const data = await res.json();
     const resultContent = document.getElementById("genResultContent");
     const resultBox = document.getElementById("genResult");
@@ -753,72 +824,40 @@ async function genererDoc() {
 }
 
 function copierDocument() {
-  const content = document.getElementById("genResultContent").innerText;
-  navigator.clipboard.writeText(content).then(() => alert("Document copié dans le presse-papier !"));
+  navigator.clipboard.writeText(document.getElementById("genResultContent").innerText).then(() => alert("Document copié !"));
 }
 
 async function enregistrerDocument() {
   const contenu = document.getElementById("genResultContent").innerText;
   if (!contenu) return;
-  const typeLabels = {
-    contrat_travail: "Contrat de travail", mise_en_demeure: "Mise en demeure",
-    contrat_bail: "Contrat de bail", statuts_sarl: "Statuts SARL",
-    fiche_client: "Fiche client", conclusions: "Conclusions"
-  };
+  const typeLabels = { contrat_travail: "Contrat de travail", mise_en_demeure: "Mise en demeure", contrat_bail: "Contrat de bail", statuts_sarl: "Statuts SARL", fiche_client: "Fiche client", conclusions: "Conclusions" };
   const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
   const btn = document.getElementById("saveBtn");
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Enregistrement...';
-  lucide.createIcons();
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Enregistrement...'; lucide.createIcons();
   try {
-    const res = await fetch(SAUVEGARDER_URL, {
-      method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ nom, contenu, type_doc: selectedDocType })
-    });
+    const res = await fetch(SAUVEGARDER_URL, { method: "POST", headers: authHeaders(), body: JSON.stringify({ nom, contenu, type_doc: selectedDocType }) });
     const data = await res.json();
-    if (data.succes) {
-      document.getElementById("saveConfirm").style.display = "block";
-      lucide.createIcons();
-      setTimeout(() => document.getElementById("saveConfirm").style.display = "none", 5000);
-    } else { alert("Erreur : " + data.erreur); }
+    if (data.succes) { document.getElementById("saveConfirm").style.display = "block"; lucide.createIcons(); setTimeout(() => document.getElementById("saveConfirm").style.display = "none", 5000); }
+    else { alert("Erreur : " + data.erreur); }
   } catch(err) { alert("Erreur de connexion."); }
-  finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer';
-    lucide.createIcons();
-  }
+  finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="save" style="width:13px;height:13px;"></i> Enregistrer'; lucide.createIcons(); }
 }
 
 async function exporterPDF() {
   const contenu = document.getElementById("genResultContent").innerText;
   if (!contenu) return;
-  const typeLabels = {
-    contrat_travail: "Contrat de travail", mise_en_demeure: "Mise en demeure",
-    contrat_bail: "Contrat de bail", statuts_sarl: "Statuts SARL",
-    fiche_client: "Fiche client", conclusions: "Conclusions"
-  };
+  const typeLabels = { contrat_travail: "Contrat de travail", mise_en_demeure: "Mise en demeure", contrat_bail: "Contrat de bail", statuts_sarl: "Statuts SARL", fiche_client: "Fiche client", conclusions: "Conclusions" };
   const nom = `${typeLabels[selectedDocType] || selectedDocType} — ${new Date().toLocaleDateString('fr-FR')}`;
   const btn = document.getElementById("exportBtn");
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Export...';
-  lucide.createIcons();
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> Export...'; lucide.createIcons();
   try {
-    const res = await fetch(EXPORT_PDF_URL, {
-      method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ contenu, type_doc: selectedDocType, nom })
-    });
+    const res = await fetch(EXPORT_PDF_URL, { method: "POST", headers: authHeaders(), body: JSON.stringify({ contenu, type_doc: selectedDocType, nom }) });
     if (!res.ok) { const err = await res.json(); alert("Erreur : " + err.erreur); return; }
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf";
-    a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a"); a.href = url; a.download = nom.replace(/[^a-zA-Z0-9\s\-]/g, "") + ".pdf"; a.click(); URL.revokeObjectURL(url);
   } catch(err) { alert("Erreur de connexion."); }
-  finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF';
-    lucide.createIcons();
-  }
+  finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="file-down" style="width:13px;height:13px;"></i> Exporter PDF'; lucide.createIcons(); }
 }
 
 async function chargerSources() {
@@ -827,65 +866,34 @@ async function chargerSources() {
     const res = await fetch(VEILLE_SOURCES_URL, { headers: authHeaders() });
     const sources = await res.json();
     liste.innerHTML = sources.map(s => `
-      <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:16px; margin-bottom:10px; display:flex; align-items:center; gap:14px; transition:0.2s;"
-           onmouseover="this.style.borderColor='rgba(198,167,94,0.35)'" onmouseout="this.style.borderColor='rgba(198,167,94,0.15)'">
-        <div style="width:38px; height:38px; border-radius:8px; background:rgba(198,167,94,0.1); border:1px solid var(--border-gold); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-          <i data-lucide="globe" style="width:18px;height:18px;stroke:var(--gold);"></i>
-        </div>
-        <div style="flex:1;">
-          <div style="font-size:14px; font-weight:500;">${s.nom}</div>
-          <div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${s.url}</div>
-        </div>
-        <button class="gold-btn" onclick="synchroniserSource('${s.id}', '${s.nom}', this)" style="padding:6px 14px; font-size:12px;">
-          <i data-lucide="download" style="width:13px;height:13px;"></i> Sync
-        </button>
-      </div>
-    `).join("");
+      <div style="background:var(--bg-dark); border:1px solid rgba(198,167,94,0.15); border-radius:10px; padding:16px; margin-bottom:10px; display:flex; align-items:center; gap:14px;" onmouseover="this.style.borderColor='rgba(198,167,94,0.35)'" onmouseout="this.style.borderColor='rgba(198,167,94,0.15)'">
+        <div style="width:38px; height:38px; border-radius:8px; background:rgba(198,167,94,0.1); border:1px solid var(--border-gold); display:flex; align-items:center; justify-content:center; flex-shrink:0;"><i data-lucide="globe" style="width:18px;height:18px;stroke:var(--gold);"></i></div>
+        <div style="flex:1;"><div style="font-size:14px; font-weight:500;">${s.nom}</div><div style="font-size:11px; color:rgba(203,213,225,0.35); margin-top:2px;">${s.url}</div></div>
+        <button class="gold-btn" onclick="synchroniserSource('${s.id}', '${s.nom}', this)" style="padding:6px 14px; font-size:12px;"><i data-lucide="download" style="width:13px;height:13px;"></i> Sync</button>
+      </div>`).join("");
     lucide.createIcons();
-  } catch(err) {
-    liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`;
-  }
+  } catch(err) { liste.innerHTML = `<div style="text-align:center; color:#f87171; font-size:13px; padding:20px 0;">Erreur de chargement</div>`; }
 }
 
 async function synchroniserSource(sourceId, sourceNom, btn) {
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> En cours...';
-  lucide.createIcons();
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;animation:spin 1s linear infinite;"></i> En cours...'; lucide.createIcons();
   try {
-    const res = await fetch(VEILLE_SYNC_URL, {
-      method: "POST", headers: authHeaders(),
-      body: JSON.stringify({ source_id: sourceId })
-    });
+    const res = await fetch(VEILLE_SYNC_URL, { method: "POST", headers: authHeaders(), body: JSON.stringify({ source_id: sourceId }) });
     const data = await res.json();
-    if (data.succes) afficherJournal(data.resultats);
-    else alert("Erreur : " + data.erreur);
+    if (data.succes) afficherJournal(data.resultats); else alert("Erreur : " + data.erreur);
   } catch(err) { alert("Erreur de connexion."); }
-  finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="download" style="width:13px;height:13px;"></i> Sync';
-    lucide.createIcons();
-  }
+  finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="download" style="width:13px;height:13px;"></i> Sync'; lucide.createIcons(); }
 }
 
 async function synchroniserTout() {
   const btn = document.getElementById("veilleGlobalBtn");
-  btn.disabled = true;
-  btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Synchronisation en cours...';
-  lucide.createIcons();
+  btn.disabled = true; btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Synchronisation en cours...'; lucide.createIcons();
   try {
-    const res = await fetch(VEILLE_SYNC_URL, {
-      method: "POST", headers: authHeaders(),
-      body: JSON.stringify({})
-    });
+    const res = await fetch(VEILLE_SYNC_URL, { method: "POST", headers: authHeaders(), body: JSON.stringify({}) });
     const data = await res.json();
-    if (data.succes) afficherJournal(data.resultats);
-    else alert("Erreur : " + data.erreur);
+    if (data.succes) afficherJournal(data.resultats); else alert("Erreur : " + data.erreur);
   } catch(err) { alert("Erreur de connexion."); }
-  finally {
-    btn.disabled = false;
-    btn.innerHTML = '<i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> Synchroniser toutes les sources';
-    lucide.createIcons();
-  }
+  finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="refresh-cw" style="width:15px;height:15px;"></i> Synchroniser toutes les sources'; lucide.createIcons(); }
 }
 
 function afficherJournal(resultats) {
@@ -902,14 +910,107 @@ function afficherJournal(resultats) {
           ${r.erreurs > 0 ? `<span style="color:#f87171;">✗ ${r.erreurs} erreurs</span>` : ""}
         </div>
       </div>
-      ${r.details.length > 0 ? `
-        <div style="font-size:12px; color:rgba(203,213,225,0.5); border-top:1px solid rgba(198,167,94,0.1); padding-top:8px;">
-          ${r.details.map(d => `<div style="margin-bottom:3px;">${d}</div>`).join("")}
-        </div>
-      ` : ""}
-    </div>
-  `).join("");
+      ${r.details.length > 0 ? `<div style="font-size:12px; color:rgba(203,213,225,0.5); border-top:1px solid rgba(198,167,94,0.1); padding-top:8px;">${r.details.map(d => `<div style="margin-bottom:3px;">${d}</div>`).join("")}</div>` : ""}
+    </div>`).join("");
   journal.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// =========== PRÉDICTION ===========
+async function uploadJurisprudence(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('jurisProgress').style.display = 'block';
+  document.getElementById('jurisSuccess').style.display = 'none';
+  const formData = new FormData();
+  formData.append('fichier', file);
+  formData.append('domaine', document.getElementById('jurisDomaine').value);
+  formData.append('issue', document.getElementById('jurisIssue').value);
+  formData.append('juridiction', document.getElementById('jurisJuridiction').value);
+  formData.append('reference', document.getElementById('jurisReference').value);
+  formData.append('date_dec', document.getElementById('jurisDate').value);
+  formData.append('titre', file.name.replace('.pdf','').replace(/-|_/g,' '));
+  try {
+    const res = await fetch(JURIS_UPLOAD_URL, { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` }, body: formData });
+    const data = await res.json();
+    document.getElementById('jurisProgress').style.display = 'none';
+    if (data.erreur) { alert('Erreur : ' + data.erreur); }
+    else {
+      document.getElementById('jurisSuccess').style.display = 'block';
+      document.getElementById('jurisFile').value = '';
+      lucide.createIcons(); chargerJurisprudence();
+      setTimeout(() => document.getElementById('jurisSuccess').style.display = 'none', 4000);
+    }
+  } catch(err) { document.getElementById('jurisProgress').style.display = 'none'; alert('Erreur de connexion.'); }
+}
+
+async function chargerJurisprudence() {
+  const liste = document.getElementById('listeJurisprudence');
+  try {
+    const res = await fetch(JURIS_LISTE_URL, { headers: authHeaders() });
+    const docs = await res.json();
+    if (!docs.length) { liste.innerHTML = '<div style="text-align:center;color:rgba(203,213,225,0.3);font-size:12px;padding:16px 0;">Aucun document indexé</div>'; return; }
+    const issueColor = { favorable: '#22c55e', defavorable: '#ef4444', partiel: '#f59e0b', '': 'rgba(203,213,225,0.4)' };
+    liste.innerHTML = docs.map(d => `
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--bg-dark);margin-bottom:6px;font-size:11px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${issueColor[d.issue]||'rgba(203,213,225,0.4)'};flex-shrink:0;"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;">${d.titre}</div>
+          <div style="color:rgba(203,213,225,0.4);">${d.domaine}${d.juridiction ? ' · '+d.juridiction : ''}</div>
+        </div>
+        <button onclick="supprimerJurisprudence('${d.id}')" style="background:none;border:none;cursor:pointer;color:rgba(203,213,225,0.3);" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(203,213,225,0.3)'">
+          <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+        </button>
+      </div>`).join("");
+    lucide.createIcons();
+  } catch(err) { liste.innerHTML = '<div style="color:#f87171;font-size:12px;padding:8px;">Erreur de chargement</div>'; }
+}
+
+async function supprimerJurisprudence(id) {
+  if (!confirm('Supprimer ce document de jurisprudence ?')) return;
+  try { await fetch(JURIS_SUPPR_URL, { method: 'DELETE', headers: authHeaders(), body: JSON.stringify({ id }) }); chargerJurisprudence(); }
+  catch(err) { alert('Erreur.'); }
+}
+
+async function lancerPrediction() {
+  const query = document.getElementById('predictQuery').value.trim();
+  const domaine = document.getElementById('predictDomaine').value;
+  if (!query) { alert("Décrivez le dossier avant de lancer l'analyse."); return; }
+  const btn = document.getElementById('predictBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i data-lucide="loader" style="width:15px;height:15px;animation:spin 1s linear infinite;"></i> Analyse en cours...';
+  lucide.createIcons();
+  document.getElementById('predictResults').style.display = 'none';
+  try {
+    const res = await fetch(PREDICT_URL, { method: 'POST', headers: authHeaders(), body: JSON.stringify({ query, domaine }) });
+    const data = await res.json();
+    if (data.erreur) { alert('Erreur : ' + data.erreur); return; }
+    afficherResultatsPrediction(data);
+  } catch(err) { alert('Erreur de connexion.'); }
+  finally { btn.disabled = false; btn.innerHTML = '<i data-lucide="brain-circuit" style="width:15px;height:15px;"></i> Analyser le dossier'; lucide.createIcons(); }
+}
+
+function afficherResultatsPrediction(data) {
+  const risk = data.risk || {};
+  const success = data.success || {};
+  const reco = data.recommendations || {};
+  const riskPct = (risk.score || 0) / 100;
+  document.getElementById('riskArc').setAttribute('stroke-dashoffset', 157 - (riskPct * 157));
+  document.getElementById('riskArc').setAttribute('stroke', risk.level === 'critique' ? '#ef4444' : risk.level === 'élevé' ? '#f97316' : risk.level === 'modéré' ? '#f59e0b' : '#22c55e');
+  document.getElementById('riskScore').textContent = risk.score || 0;
+  document.getElementById('riskLevel').textContent = (risk.level || '—').toUpperCase();
+  document.getElementById('riskLevel').style.color = risk.level === 'critique' ? '#ef4444' : risk.level === 'élevé' ? '#f97316' : risk.level === 'modéré' ? '#f59e0b' : '#22c55e';
+  const succPct = success.probability || 0;
+  document.getElementById('successArc').setAttribute('stroke-dashoffset', 157 - (succPct * 157));
+  document.getElementById('successScore').textContent = Math.round(succPct * 100) + '%';
+  document.getElementById('successConf').textContent = 'Confiance : ' + (success.confidence || '—');
+  document.getElementById('predictSynthese').textContent = reco.synthese || '—';
+  document.getElementById('predictActions').innerHTML = (reco.actions_prioritaires || []).map(a => `<div style="margin-bottom:6px;">→ ${a}</div>`).join('') || '—';
+  document.getElementById('predictVigilance').innerHTML = (reco.points_vigilance || []).map(a => `<div style="margin-bottom:6px;">⚠ ${a}</div>`).join('') || '—';
+  document.getElementById('predictEtapes').innerHTML = (reco.prochaines_etapes || []).map((a,i) => `<div style="margin-bottom:6px;">${i+1}. ${a}</div>`).join('') || '—';
+  document.getElementById('predictAlternatives').innerHTML = (reco.alternatives || []).map(a => `<div style="margin-bottom:6px;">◆ ${a}</div>`).join('') || '—';
+  document.getElementById('predictMeta').textContent = `${data.precedents_trouves || 0} précédent(s) analysé(s) · Domaine : ${data.domaine}`;
+  document.getElementById('predictResults').style.display = 'block';
+  document.getElementById('predictResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 </script>
 </body>
