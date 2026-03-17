@@ -1,4 +1,8 @@
 from dotenv import load_dotenv
+import pyotp
+import qrcode
+import base64
+from io import BytesIO
 load_dotenv()
 
 import sys
@@ -71,7 +75,29 @@ from audit_logger import (
 )
 
 # ─── Chiffrement ─────────────────────────────────────────
-from encryption import chiffrer, dechiffrer, est_chiffre
+from encryption import chiffrer, dechiffrer, est_chiffre, extraire_index
+
+# ─── Voyage AI embeddings ─────────────────────────────────
+VOYAGE_API_KEY = os.environ.get("VOYAGE_API_KEY")
+VOYAGE_MODEL = "voyage-law-2"
+VOYAGE_URL = "https://api.voyageai.com/v1/embeddings"
+
+def get_query_embedding(question: str):
+    """Génère un embedding vectoriel pour la recherche via Voyage AI."""
+    try:
+        if not VOYAGE_API_KEY:
+            return None
+        res = requests.post(
+            VOYAGE_URL,
+            headers={"Authorization": f"Bearer {VOYAGE_API_KEY}", "Content-Type": "application/json"},
+            json={"input": [question[:4096]], "model": VOYAGE_MODEL, "input_type": "query"},
+            timeout=10
+        )
+        res.raise_for_status()
+        return res.json()["data"][0]["embedding"]
+    except Exception as e:
+        print(f"[VOYAGE] Erreur embedding : {e}")
+        return None
 
 
 # ─── Log erreur ───────────────────────────────────────────
@@ -121,44 +147,60 @@ def rechercher_chunks(question, limite=10):
 
     def ajouter_chunks(data):
         for chunk in data:
-            cle = str(chunk['document_id']) + "-" + str(chunk['page_numero'])
+            cle = str(chunk.get('document_id', '')) + "-" + str(chunk.get('page_numero', ''))
             if cle not in ids_vus:
                 ids_vus.add(cle)
                 if est_chiffre(chunk.get('contenu', '')):
                     chunk['contenu'] = dechiffrer(chunk['contenu'])
                 tous_chunks.append(chunk)
 
+    # ── Niveau 1 : Recherche vectorielle Voyage AI (meilleure pertinence) ──
     try:
-        result = supabase.table("chunks").select(
-            "contenu, page_numero, document_id"
-        ).ilike("contenu", f"%{question.lower()}%").limit(limite).execute()
-        ajouter_chunks(result.data)
-    except Exception:
-        pass
+        embedding = get_query_embedding(question)
+        if embedding:
+            result = supabase.rpc("match_chunks", {
+                "query_embedding": embedding,
+                "match_threshold": 0.5,
+                "match_count": limite
+            }).execute()
+            if result.data:
+                ajouter_chunks(result.data)
+    except Exception as e:
+        print(f"[SEARCH] Vectorielle échouée : {e}")
 
+    # ── Niveau 2 : Fallback ilike sur contenu_index ──────────────────────
+    if not tous_chunks:
+        try:
+            result = supabase.table("chunks").select(
+                "contenu, contenu_index, page_numero, document_id, metadata"
+            ).ilike("contenu_index", f"%{question.lower()}%").limit(limite).execute()
+            ajouter_chunks(result.data)
+        except Exception:
+            pass
+
+    # ── Niveau 3 : Fallback ilike sur contenu brut ───────────────────────
+    if not tous_chunks:
+        try:
+            result = supabase.table("chunks").select(
+                "contenu, contenu_index, page_numero, document_id, metadata"
+            ).ilike("contenu", f"%{question.lower()}%").limit(limite).execute()
+            ajouter_chunks(result.data)
+        except Exception:
+            pass
+
+    # ── Niveau 4 : Recherche mot par mot ────────────────────────────────
     if not tous_chunks:
         try:
             mots = [m for m in question.lower().split() if len(m) > 4]
-            for mot in mots:
+            for mot in mots[:5]:
                 result = supabase.table("chunks").select(
-                    "contenu, page_numero, document_id"
-                ).ilike("contenu", f"%{mot}%").limit(5).execute()
+                    "contenu, contenu_index, page_numero, document_id, metadata"
+                ).ilike("contenu_index", f"%{mot}%").limit(5).execute()
                 ajouter_chunks(result.data)
         except Exception:
             pass
 
-    if not tous_chunks:
-        try:
-            mots_cles = extraire_mots_cles(question)
-            for mot in mots_cles[:5]:
-                result = supabase.table("chunks").select(
-                    "contenu, page_numero, document_id"
-                ).ilike("contenu", f"%{mot}%").limit(3).execute()
-                ajouter_chunks(result.data)
-        except Exception:
-            pass
-
-    return tous_chunks[:10]
+    return tous_chunks[:limite]
 
 def obtenir_nom_document(document_id):
     try:
@@ -171,12 +213,89 @@ def obtenir_nom_document(document_id):
 
 
 # ════════════════════════════════════════
+def _vectoriser_document(doc_id: str):
+    try:
+        import time
+        result = supabase.table('chunks').select(
+            'id, contenu, contenu_index'
+        ).eq('document_id', doc_id).is_('embedding', 'null').execute()
+        chunks = result.data
+        if not chunks:
+            return
+        print(f'[VOYAGE] Vectorisation arriere-plan : {len(chunks)} chunks')
+        BATCH = 20
+        for i in range(0, len(chunks), BATCH):
+            lot = chunks[i:i + BATCH]
+            textes = []
+            for c in lot:
+                texte = c.get('contenu_index') or c.get('contenu', '')
+                if texte.startswith('ENC:'):
+                    texte = 'document juridique confidentiel'
+                textes.append(texte.strip() or 'document juridique')
+            try:
+                emb_res = requests.post(
+                    VOYAGE_URL,
+                    headers={'Authorization': f'Bearer {VOYAGE_API_KEY}', 'Content-Type': 'application/json'},
+                    json={'input': textes, 'model': VOYAGE_MODEL, 'input_type': 'document'},
+                    timeout=30
+                )
+                emb_res.raise_for_status()
+                embeddings = [item['embedding'] for item in emb_res.json()['data']]
+                for j, chunk in enumerate(lot):
+                    supabase.table('chunks').update({'embedding': embeddings[j]}).eq('id', chunk['id']).execute()
+                time.sleep(0.2)
+            except Exception as e:
+                print(f'[VOYAGE] Erreur lot : {e}')
+        print(f'[VOYAGE] Vectorisation terminee doc {doc_id[:8]}')
+    except Exception as e:
+        print(f'[VOYAGE] Erreur : {e}')
+
+# ─── 2FA TOTP ────────────────────────────────────────────
+TOTP_SECRET = os.environ.get('TOTP_SECRET', '')
+
+def verifier_totp(code: str) -> bool:
+    if not TOTP_SECRET:
+        return True  # 2FA désactivé si pas de secret configuré
+    totp = pyotp.TOTP(TOTP_SECRET)
+    return totp.verify(code, valid_window=1)
+
 # ROUTES
 # ════════════════════════════════════════
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/setup-2fa-page")
+def setup_2fa_page():
+    return render_template("setup_2fa.html")
+
+
+@app.route("/setup-2fa", methods=["GET"])
+def setup_2fa():
+    """Génère le QR code pour configurer Authy/Google Authenticator."""
+    secret = os.environ.get("TOTP_SECRET", "")
+    if not secret:
+        return jsonify({"erreur": "TOTP_SECRET non configuré"}), 500
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(
+        name="Maitre Boubou",
+        issuer_name="Cabinet Boubou"
+    )
+
+    # Génère le QR code en base64
+    qr = qrcode.make(uri)
+    buffer = BytesIO()
+    qr.save(buffer, format="PNG")
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+
+    return jsonify({
+        "qr_code": f"data:image/png;base64,{qr_base64}",
+        "secret": secret,
+        "uri": uri
+    })
 
 
 @app.route("/login", methods=["POST"])
@@ -189,6 +308,18 @@ def login():
         hash_stocke = os.environ.get("CABINET_PASSWORD", "").encode()
 
         if bcrypt.checkpw(password, hash_stocke):
+            # Vérification 2FA si TOTP_SECRET configuré
+            if TOTP_SECRET:
+                code_2fa = data.get("code_2fa", "").strip()
+                if not code_2fa:
+                    return jsonify({"require_2fa": True}), 200
+                if not verifier_totp(code_2fa):
+                    try:
+                        log_audit(ACTION_LOGIN_ECHEC, {"status": "2fa_echec"}, succes=False)
+                    except Exception:
+                        pass
+                    return jsonify({"erreur": "Code Authy incorrect ou expiré"}), 401
+
             token = create_access_token(identity="cabinet_boubou")
             try:
                 log_audit(ACTION_LOGIN, {"status": "succes"}, succes=True)
@@ -492,14 +623,29 @@ def upload_document():
             for j in range(0, len(texte), 500):
                 chunk_texte = texte[j:j + 500].strip()
                 if len(chunk_texte) > 50:
-                    contenu_final = chiffrer(chunk_texte) if est_sensible else chunk_texte
+                    if est_sensible:
+                        contenu_final = chiffrer(chunk_texte)
+                        index_final = extraire_index(chunk_texte)
+                    else:
+                        contenu_final = chunk_texte
+                        index_final = chunk_texte
+
                     supabase.table("chunks").insert({
                         "document_id": doc_id,
                         "contenu": contenu_final,
+                        "contenu_index": index_final,
                         "page_numero": page_data["page"],
                         "metadata": {"sensible": est_sensible}
                     }).execute()
                     chunks_inseres += 1
+
+        # Vectorisation en arrière-plan après l'upload
+        import threading
+        threading.Thread(
+            target=_vectoriser_document,
+            args=(doc_id,),
+            daemon=True
+        ).start()
 
         try:
             log_audit(ACTION_UPLOAD, {"fichier": fichier.filename, "chunks": chunks_inseres})

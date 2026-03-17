@@ -176,6 +176,23 @@ textarea::placeholder { color:rgba(203,213,225,0.4); }
       </button>
     </div>
     <button class="login-btn" onclick="checkLogin()">Accéder au cabinet</button>
+
+    <!-- Section 2FA — apparaît après le mot de passe -->
+    <div id="login2faSection" style="display:none; margin-top:20px;">
+      <div style="border-top:1px solid rgba(198,167,94,0.2); padding-top:20px; margin-bottom:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; justify-content:center;">
+          <span style="font-size:20px;">📱</span>
+          <span style="font-size:14px; font-weight:500; color:var(--gold);">Double authentification</span>
+        </div>
+        <p style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">Ouvrez Authy et entrez le code à 6 chiffres</p>
+        <input type="text" id="login2faInput" class="login-input" placeholder="000000"
+          maxlength="6" inputmode="numeric" style="text-align:center; font-size:22px; letter-spacing:8px; font-family:monospace;"
+          oninput="this.value=this.value.replace(/\D/g,'')"
+          onkeydown="if(event.key==='Enter') checkLogin()">
+        <button class="login-btn" onclick="checkLogin()" style="margin-top:10px;">Valider le code</button>
+      </div>
+    </div>
+
     <div class="login-error" id="loginError">Mot de passe incorrect. Veuillez réessayer.</div>
   </div>
 </div>
@@ -408,13 +425,21 @@ function toggleSensible() {
 
 async function checkLogin() {
   const pwd = document.getElementById("loginPassword").value;
+  const code2fa = document.getElementById("login2faInput") ? document.getElementById("login2faInput").value.trim() : "";
   try {
     const res = await fetch(BASE_URL + "/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: pwd })
+      body: JSON.stringify({ password: pwd, code_2fa: code2fa })
     });
     const data = await res.json();
+    if (res.ok && data.require_2fa) {
+      // Afficher le champ 2FA
+      document.getElementById("login2faSection").style.display = "block";
+      document.getElementById("loginError").classList.remove("visible");
+      document.getElementById("login2faInput").focus();
+      return;
+    }
     if (res.ok && data.token) {
       authToken = data.token;
       sessionStorage.setItem("auth_token", data.token);
@@ -423,7 +448,9 @@ async function checkLogin() {
       overlay.style.transition = "opacity 0.4s ease";
       setTimeout(() => { overlay.style.display = "none"; chargerDocuments(); }, 400);
     } else {
-      document.getElementById("loginError").classList.add("visible");
+      const errMsg = document.getElementById("loginError");
+      errMsg.textContent = data.erreur || "Mot de passe incorrect. Veuillez réessayer.";
+      errMsg.classList.add("visible");
       document.getElementById("loginPassword").style.borderColor = "#f87171";
       setTimeout(() => { document.getElementById("loginPassword").style.borderColor = ""; }, 1500);
     }

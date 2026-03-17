@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Configuration 2FA — Cabinet Boubou</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --bg-dark:#0F172A; --bg-secondary:#1E293B; --gold:#C6A75E; --gold-hover:#D4B873; --text-primary:#F8FAFC; --text-secondary:#CBD5E1; --border-gold:rgba(198,167,94,0.25); }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Inter',sans-serif; background:radial-gradient(circle at top center,#1E293B 0%,#0F172A 60%); color:var(--text-primary); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+.card { background:var(--bg-secondary); border:1px solid var(--border-gold); border-radius:20px; padding:48px 40px; width:100%; max-width:480px; text-align:center; }
+.logo { width:56px; height:56px; border:1px solid var(--gold); border-radius:12px; display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:24px; }
+h1 { font-family:'Playfair Display',serif; font-size:22px; margin-bottom:6px; }
+h1 span { color:var(--gold); }
+.subtitle { color:var(--text-secondary); font-size:13px; margin-bottom:32px; line-height:1.6; }
+.steps { text-align:left; margin-bottom:28px; }
+.step { display:flex; gap:14px; align-items:flex-start; margin-bottom:16px; }
+.step-num { width:28px; height:28px; border-radius:50%; background:rgba(198,167,94,0.15); border:1px solid var(--border-gold); color:var(--gold); font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+.step-text { font-size:13px; color:var(--text-secondary); line-height:1.6; }
+.step-text strong { color:var(--text-primary); }
+.qr-container { background:white; border-radius:12px; padding:16px; display:inline-block; margin:24px 0; }
+.qr-container img { width:200px; height:200px; display:block; }
+.secret-box { background:rgba(198,167,94,0.08); border:1px solid var(--border-gold); border-radius:10px; padding:12px 16px; margin:16px 0 24px; }
+.secret-label { font-size:11px; color:var(--text-secondary); margin-bottom:6px; }
+.secret-key { font-family:monospace; font-size:13px; color:var(--gold); letter-spacing:2px; word-break:break-all; }
+.verify-section { border-top:1px solid var(--border-gold); padding-top:24px; margin-top:8px; }
+.verify-label { font-size:13px; color:var(--text-secondary); margin-bottom:12px; }
+.code-input { width:100%; background:var(--bg-dark); border:1px solid var(--border-gold); border-radius:10px; padding:14px; color:var(--text-primary); font-size:24px; font-family:monospace; text-align:center; letter-spacing:8px; outline:none; transition:0.3s; }
+.code-input:focus { border-color:var(--gold); box-shadow:0 0 12px rgba(198,167,94,0.15); }
+.verify-btn { width:100%; background:linear-gradient(135deg,#C6A75E,#D4B873); border:none; border-radius:10px; padding:14px; color:var(--bg-dark); font-size:15px; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:0.3s; margin-top:12px; }
+.verify-btn:hover { box-shadow:0 4px 20px rgba(198,167,94,0.4); transform:translateY(-1px); }
+.result { margin-top:14px; font-size:13px; padding:12px; border-radius:8px; display:none; }
+.result.success { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:#22c55e; }
+.result.error { background:rgba(248,113,113,0.1); border:1px solid rgba(248,113,113,0.3); color:#f87171; }
+.warning { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); border-radius:10px; padding:12px 16px; margin-top:20px; font-size:12px; color:rgba(203,213,225,0.6); line-height:1.6; }
+.warning strong { color:#f87171; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">⚖️</div>
+  <h1>Double authentification <span>Authy</span></h1>
+  <p class="subtitle">Configurez la double authentification pour sécuriser l'accès au cabinet.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-text"><strong>Installez Authy</strong> sur votre téléphone (App Store ou Google Play)</div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-text"><strong>Scannez le QR code</strong> ci-dessous avec Authy → "Ajouter un compte" → "Scanner"</div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>Vérifiez</strong> en entrant le code à 6 chiffres affiché dans Authy</div>
+    </div>
+  </div>
+
+  <div class="qr-container">
+    <img id="qrImg" src="" alt="QR Code Authy"/>
+  </div>
+
+  <div class="secret-box">
+    <div class="secret-label">Clé manuelle (si scan impossible)</div>
+    <div class="secret-key" id="secretKey">Chargement...</div>
+  </div>
+
+  <div class="verify-section">
+    <div class="verify-label">Entrez le code Authy pour confirmer la configuration :</div>
+    <input type="text" class="code-input" id="codeInput" placeholder="000000" maxlength="6" inputmode="numeric" oninput="this.value=this.value.replace(/\D/g,'')" onkeydown="if(event.key==='Enter') verifier()">
+    <button class="verify-btn" onclick="verifier()">Vérifier et activer</button>
+    <div class="result" id="result"></div>
+  </div>
+
+  <div class="warning">
+    <strong>Important :</strong> Conservez précieusement la clé manuelle ci-dessus. En cas de perte de votre téléphone, elle vous permettra de réconfigurer Authy. Ne la partagez avec personne.
+  </div>
+</div>
+
+<script>
+async function chargerQR() {
+  try {
+    const res = await fetch('/setup-2fa');
+    const data = await res.json();
+    document.getElementById('qrImg').src = data.qr_code;
+    document.getElementById('secretKey').textContent = data.secret;
+  } catch(err) {
+    document.getElementById('secretKey').textContent = 'Erreur de chargement';
+  }
+}
+
+async function verifier() {
+  const code = document.getElementById('codeInput').value.trim();
+  if (code.length !== 6) { alert('Entrez un code à 6 chiffres.'); return; }
+
+  try {
+    const res = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: '__2fa_test__', code_2fa: code })
+    });
+    const data = await res.json();
+    const result = document.getElementById('result');
+    result.style.display = 'block';
+
+    if (data.require_2fa || data.erreur === 'Mot de passe incorrect') {
+      result.className = 'result error';
+      result.textContent = 'Code incorrect ou expiré. Réessayez.';
+    } else if (data.erreur && data.erreur.includes('Authy')) {
+      result.className = 'result error';
+      result.textContent = data.erreur;
+    } else {
+      result.className = 'result success';
+      result.textContent = '✓ Code valide ! La double authentification est activée. Vous pouvez fermer cette page.';
+    }
+  } catch(err) {
+    alert('Erreur de connexion.');
+  }
+}
+
+chargerQR();
+document.getElementById('codeInput').focus();
+</script>
+</body>
+</html>
