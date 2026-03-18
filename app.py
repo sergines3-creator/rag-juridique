@@ -65,7 +65,11 @@ client = Anthropic(api_key=ANTHROPIC_KEY)
 
 # ─── Blueprint prédiction ─────────────────────────────────
 from predict_endpoint import predict_bp
+from backup import lancer_backup, demarrer_scheduler
 app.register_blueprint(predict_bp)
+
+# Démarrer le scheduler de backup hebdomadaire
+demarrer_scheduler()
 
 # ─── Audit logger ─────────────────────────────────────────
 from audit_logger import (
@@ -1203,6 +1207,28 @@ Produis des recommandations en JSON strict (sans markdown) :
             "prochaines_etapes": [], "alternatives": [],
             "synthese": f"Erreur de synthèse : {str(e)[:100]}"
         }
+
+
+@app.route("/admin/backup", methods=["POST"])
+@jwt_required()
+def admin_backup():
+    """Déclenche un backup manuel."""
+    try:
+        resultat = lancer_backup()
+        return jsonify(resultat)
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
+
+
+@app.route("/admin/liste_backups", methods=["GET"])
+@jwt_required()
+def liste_backups():
+    """Liste les backups disponibles dans Supabase Storage."""
+    try:
+        fichiers = supabase.storage.from_("backups").list()
+        return jsonify(fichiers)
+    except Exception as e:
+        return jsonify({"erreur": str(e)}), 500
 
 
 if __name__ == "__main__":
